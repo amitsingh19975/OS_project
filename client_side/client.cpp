@@ -2,13 +2,18 @@
 #include <cmath>
 using namespace std;
 using namespace terminal;
+using namespace chat_utility;
 
 int main(int argv, char** argc){
     Terminal t;
+    User u("Amit","Singh");
+    SocketConnection s;
+
+    // while(true){
+
+    // }
     t.init();
-
-    t.wScreen("Hello",23,4);
-
+    main_menu(t);
     disable();
     return 0;
 }
