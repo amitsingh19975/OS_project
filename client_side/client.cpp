@@ -1,8 +1,6 @@
 #include "include/client_utility.h"
 #include <cmath>
 using namespace std;
-using namespace fmt;
-using namespace fmt::literals;
 
 bool is_square(double num){
     return num == static_cast<int>(num);
