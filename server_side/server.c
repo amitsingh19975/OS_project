@@ -125,22 +125,22 @@ void *client_process_init(void *param) {
         online_users++;
         write(connection, response_message, 2048);
         payload = (char *)malloc(MAX_LEN*online_users*sizeof(char));
-        cat_online_user(payload);
+        cat_online_user(payload, users[index].username);
         write(connection, payload, strlen(payload) + 1);
     }
     else {
         sprint(response_message, "%s : %s", "FAIL", "USER OR PASS");
         write(connection, response_message, 2048);
         close(connection);
-        pthread_exit(EXIT_FAILURE);
+        pthread_exit(NULL);
     }
 }
 
-void cat_online_user(char payload[]) {
+void cat_online_user(char payload[], char username[]) {
     for (int i = 0; i<total_users; i++) {
-        if (users[i].status == ONLINE) {
+        if (users[i].status == ONLINE && !strcmp(users[i].username, username)) {
             strcat(payload, users[i].username);
-            strcat(payload, ' ');
+            strcat(payload, " ");
         }
     }
 } 
@@ -158,6 +158,17 @@ int authenticate(char user[], char pass[]) {
         return -1;
     }
     return index;
+}
+
+int search_user(char user[]) {
+    int i;
+    for ( i = 0; i < total_users; i++)
+    {
+        if (strcmp(user, users[i].username)){
+            return i;
+        }
+    }
+    return -1;
 }
 
 void close_connection(int connection) {

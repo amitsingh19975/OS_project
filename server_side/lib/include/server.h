@@ -11,7 +11,7 @@ void user_reset(int);
 int authenticate(char*, char*);
 int search_user(char*);
 void close_connection(int);
-void cat_online_user(char*);
+void cat_online_user(char*, char*);
 
 // Client processes
 void *client_process_init(void *param);
