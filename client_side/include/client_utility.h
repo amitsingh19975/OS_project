@@ -110,7 +110,7 @@ namespace chat_utility{
         
         sscanf(buff,"%s : %s",type,what);
         
-        if(strcmp(type,"Success")){
+        if(strcmp(type,"Success") == 0){
             m_ter.sprint(buff);
         }else{
             m_ter.eprint(buff);
@@ -136,7 +136,7 @@ namespace chat_utility{
         
         sscanf(buff,"%s : %s",type,what);
         
-        if(strcmp(type,"Success")){
+        if(strcmp(type,"Success") == 0){
             m_ter.sprint(buff);
         }else{
             m_ter.eprint(buff);
