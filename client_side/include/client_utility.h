@@ -16,24 +16,23 @@
 #include <arpa/inet.h>
 #include "terminal_raw.h"
 #include "color.h"
+#include "string_utility.h"
+#include <map>
 
 namespace chat_utility{
-
-    using header_color = Bit_3_4<FG::BLUE>;
-    using menu_color = Bit_3_4<FG::GREEN>;
 
     struct SocketConnection;
 
     struct User{
         
         User():m_is_init(false){}
-        User(std::string_view user, std::string_view pass):m_username(user),m_password(pass),m_is_init(true){
+        User(std::string& user, std::string& pass):m_username(std::move(user)),m_password(std::move(pass)),m_is_init(true){
             assert(m_username.size() < 1024);
             assert(m_password.size() < 1024);
         }
-        User(std::string_view user):m_username(user),m_is_init(true){
-            m_password = getpass("");
+        User(std::string& user):m_username(std::move(user)),m_is_init(true){
             assert(m_username.size() < 1024);
+            m_password = std::string(getpass(""));
             assert(m_password.size() < 1024);
         }
 
@@ -47,26 +46,28 @@ namespace chat_utility{
 
     private:
         friend struct SocketConnection;
-        bool        m_is_init{false};
-        std::string m_username;
-        std::string m_password;
+        bool                                m_is_init{false};
+        std::string                         m_username;
+        std::string                         m_password;
     };
 
     struct SocketConnection{
 
-        SocketConnection(User& user):m_user(std::move(user)),m_fd(-1){}
         SocketConnection() = default;
-
+        SocketConnection(User& user):m_user(std::move(user)),m_fd(-1){}
         constexpr auto set_user(User& user) noexcept;
-        auto conn() noexcept;
-        auto send() const noexcept;
-        auto recv() const noexcept;
-        auto login() noexcept;
+        auto conn()     noexcept;
+        auto send()     const noexcept;
+        auto recv()     const noexcept;
+        auto login()    noexcept;
+        [[nodiscard]] constexpr auto get_user_list() const noexcept
+            ->std::map<uint32_t,std::string> const&;
 
     private:
-        int             m_fd;
-        User            m_user;
-        std::mutex      m_mu;
+        int                                 m_fd;
+        User                                m_user;
+        std::mutex                          m_mu;
+        std::map<uint32_t,std::string> m_list;
     };
 
     auto SocketConnection::conn() noexcept{
@@ -88,6 +89,7 @@ namespace chat_utility{
         write(m_fd,payload,len);
         len = read(m_fd,buff,2048);
         m_user.m_password.clear();
+        return std::string(buff);
     }
 
     constexpr auto SocketConnection::set_user(User& user) noexcept{
@@ -95,47 +97,14 @@ namespace chat_utility{
         m_user = std::move(user);
     }
 
-    auto uniform_padding(std::string& el, size_t m){
-        auto len = el.size() < m ? m - el.size() : 0;
-        len /= 2;
-        el = std::string(len,' ') + el + std::string(len,' ');
+    [[nodiscard]] constexpr auto SocketConnection::get_user_list() const noexcept
+        ->std::map<uint32_t,std::string> const&{
+        return m_list;
+    } 
+
+    auto SocketConnection::send() const noexcept{
+        
     }
-
-    auto main_menu(terminal::Terminal& t, int selected = 1){
-        const int Max = 20;        
-        t.clearScreen();
-        int y = 0;
-        auto b = format<header_color,TF::BOLD>("Welcome to OS Project");
-        t.wScreenCentre(b, y,2);
-        
-        std::vector<std::string> list = {"Login","Exit"};
-        
-        auto m = 0u;
-        for(auto const& el : list){
-            if(m < el.size()){
-                m = el.size();
-            }
-        }
-
-        for(auto & el : list){
-            uniform_padding(el, m + 5);
-        }
-        y += 3;
-        for(auto i = 0; i < list.size(); i++){
-            if(selected == i){
-                b = format(list[i],menu_color{FG::WHITE,BG::GREEN});
-            }else{
-                b = format<menu_color>(list[i]);
-            }
-            m = m > b.size() ? m : b.size();
-            t.wScreenCentre(b, y++);
-        }
-        
-        t.wScreen("\r\n");
-
-    }
-
 }
-
 
 #endif // CLIENT_UTILITY_H

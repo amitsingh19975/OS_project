@@ -9,10 +9,12 @@
 #include <stdlib.h>
 #include <termios.h>
 #include <unistd.h>
+#include "color.h"
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 
 namespace terminal{
+    using namespace chat_utility;
     std::string CLEARSCREEN  = "\x1b[2J";
     // std::string CLEARSCREEN  = "\x1b[K";
     enum editorKey{
@@ -24,7 +26,8 @@ namespace terminal{
         HOME_KEY,
         END_KEY,
         PAGE_UP,
-        PAGE_DOWN     
+        PAGE_DOWN,
+        ENTER_KEY = 13     
     };
 
 
@@ -38,9 +41,13 @@ namespace terminal{
         auto clearScreen(size_t x = 0, size_t y = 0) const noexcept;
         auto getWindowSize() const noexcept;
         auto getCursorPosition() const noexcept;
-        auto wScreen(std::string_view, int x = 0, int y = 0);
-        auto wScreenCentre(std::string_view, int y = 0, int x_offset = 0);
-
+        auto wScreen(std::string_view, int x = 0, int y = 0) noexcept;
+        auto wScreenCentreX(std::string_view, int y = 0, int x_offset = 0) noexcept;
+        auto wScreenCentreY(std::string_view, int x = 0, int y_offset = 0) noexcept;
+        auto wScreenCentreXY(std::string_view, int x_offset = 0, int y_offset = 0) noexcept;
+        auto sprint(std::string_view) noexcept;
+        auto eprint(std::string_view) noexcept;
+        auto wprint(std::string_view) noexcept;
         inline static termios origonalState;
     };
 
@@ -179,7 +186,7 @@ namespace terminal{
         y = Y;
     }
 
-    auto Terminal::wScreen(std::string_view str, int x, int y){
+    auto Terminal::wScreen(std::string_view str, int x, int y) noexcept{
         std::string text(str);
         if(x != 0 || y != 0){
             text = "\x1b["+ std::to_string(y) +";"+ std::to_string(x) + "H" + text;
@@ -187,7 +194,7 @@ namespace terminal{
         write(1,text.c_str(),text.size());
     }
 
-    auto Terminal::wScreenCentre(std::string_view str, int y, int x_offset){
+    auto Terminal::wScreenCentreX(std::string_view str, int y, int x_offset) noexcept{
         auto [row,col] = getWindowSize();
         int x = col - str.size();
         x /= 2;
@@ -196,6 +203,49 @@ namespace terminal{
         text = "\x1b["+ std::to_string(y) +";"+ std::to_string(x) + "H" + text;
         write(1,text.c_str(),text.size());
         return x;
+    }
+
+    auto Terminal::wScreenCentreY(std::string_view str, int x, int y_offset) noexcept{
+        auto [row,col] = getWindowSize();
+        int y = row;
+        y /= 2;
+        y += y_offset;
+        std::string text(str);
+        text = "\x1b["+ std::to_string(y) +";"+ std::to_string(x) + "H" + text;
+        write(1,text.c_str(),text.size());
+        return y;
+    }
+
+    auto Terminal::wScreenCentreXY(std::string_view str, int x_offset, int y_offset) noexcept{
+        auto [row,col] = getWindowSize();
+        int x = col - str.size();
+        int y = row;
+        x /= 2;
+        y /= 2;
+        x += x_offset;
+        y += y_offset;
+        std::string text(str);
+        text = "\x1b["+ std::to_string(y) +";"+ std::to_string(x) + "H" + text;
+        write(1,text.c_str(),text.size());
+        return std::make_pair(x,y);
+    }
+    
+    auto Terminal::sprint(std::string_view str) noexcept{
+        clearScreen();
+        auto mess = format<Bit_3_4<FG::GREEN>,TF::BOLD>(str);
+        wScreenCentreXY(mess);
+    }
+
+    auto Terminal::eprint(std::string_view str) noexcept{
+        clearScreen();
+        auto mess = format<Bit_3_4<FG::BRIGHT_RED>,TF::BOLD>(str);
+        wScreenCentreXY(mess);
+    }
+
+    auto Terminal::wprint(std::string_view str) noexcept{
+        clearScreen();
+        auto mess = format<Bit_3_4<FG::YELLOW>,TF::BOLD>(str);
+        wScreenCentreXY(mess);
     }
 }
 
