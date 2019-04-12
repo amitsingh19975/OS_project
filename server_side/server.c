@@ -34,7 +34,6 @@ int main(int argc, char const *argv[])
 int server_init(int *server_fd) {
     online_users = 0;
     struct sockaddr_in address;
-    int opt = 1;
     int addrlen = sizeof(address);
     // Create a socket connection
     if ((*server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
@@ -42,13 +41,7 @@ int server_init(int *server_fd) {
         perror("Socket failed");
         return 1;
     }
-    // Setting reusable address and port to prevent errors like address already in use
-    if (setsockopt(*server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
-    {
-        perror("Error in Setsockopt");
-        return 1;
-    }
-
+    
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
