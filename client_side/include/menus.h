@@ -12,8 +12,9 @@ namespace chat_utility{
 
     enum Menu{
         MAIN = -1,
-        LOGIN = 100,
-        USER = 200
+        LOGIN,
+        USER,
+        CHAT
     };
 
     bool key_event(Terminal const& t, int& selected, int& pressed, size_t max) noexcept{
@@ -83,7 +84,7 @@ namespace chat_utility{
     }
 
 
-    auto user_menu_helper(terminal::Terminal& t, std::map<uint32_t,std::string>& list
+    auto user_menu_helper(terminal::Terminal& t, std::map<uint32_t,std::string> const& list
         ,int selected){
         
         t.clearScreen();
@@ -108,20 +109,30 @@ namespace chat_utility{
     }
 
 
-    // auto chat_helper(terminal::Terminal& t, SocketConnection& sc , int y){
+    auto chat_menu_helper(terminal::Terminal& t, SocketConnection& sc , int y){
         
         
 
-    // }
+    }
 
-    auto user_menu(terminal::Terminal& t, std::map<uint32_t,std::string>& list){
+    auto chat_menu(terminal::Terminal& t, SocketConnection& sc , int y = 0){
+        
+        chat_menu_helper(t,sc,y);
+    }
+
+    auto user_menu(terminal::Terminal& t, std::map<uint32_t,std::string> const& list){
         int selected = 0;
         int pressed = -1;
+
+        if(!list.size()){
+            return -1;
+        }
+
         while(pressed == -1){
             user_menu_helper(t,list,selected);
             key_event(t,selected,pressed,list.size());
         }
-        return list[pressed];
+        return pressed;
     }
 
     auto main_menu(terminal::Terminal& t, std::vector<std::string>& list){
