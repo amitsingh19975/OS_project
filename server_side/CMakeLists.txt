@@ -8,4 +8,4 @@ set (SERVER_SOURCE server.c)
 add_executable (server ${SERVER_SOURCE})
 target_link_libraries (server utility pthread)
 # Copy users to build
-file (COPY ${CMAKE_SOURCE_DIR}/server_side/users DESTINATION ${CMAKE_BINARY_DIR})
+file (COPY ${CMAKE_SOURCE_DIR}/server_side/users DESTINATION ${CMAKE_BINARY_DIR}/server_side)

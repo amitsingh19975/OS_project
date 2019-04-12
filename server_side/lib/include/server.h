@@ -3,7 +3,7 @@
 #define OFFLINE 0
 #define MAX_CONN 10
 #define MAX_LEN 100
-#define USERDIR "users"
+#define USERDIR "../users"
 int server_init(int *);
 int user_init();
 void user_reset(int);
