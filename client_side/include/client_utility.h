@@ -5,6 +5,7 @@
 #include <vector>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -86,22 +87,46 @@ namespace chat_utility{
     }
 
     auto SocketConnection::conn_to(uint32_t idx) noexcept{
+        if(m_fd == -1){
+            m_ter.eprint("Not Connected to Server!\r\n");
+            return 0;
+        }
         char payload[2048]  = {0};
         char buff[2048]     = {0};
         size_t len = sprintf(payload,"%s",m_list.at(idx).c_str());
         write(m_fd,payload,len);
         len = read(m_fd,buff,2048);
-        return std::string(buff);
+        char type[10] = {0};
+        char what[2038] = {0};
+        sscanf(buff,"%s : %s",type,what);
+        if(strcmp(type,"Success")){
+            m_ter.sprint(buff);
+        }else{
+            m_ter.eprint(buff);
+        }
+        return 1;
     }
 
     auto SocketConnection::login() noexcept{
+        if(m_fd == -1){
+            m_ter.eprint("Not Connected to Server!\r\n");
+            return 0;
+        }
         char payload[2048]  = {0};
         char buff[2048]     = {0};
         size_t len = sprintf(payload,"%s : %s",m_user.m_username.c_str(),m_user.m_password.c_str());
         write(m_fd,payload,len);
         len = read(m_fd,buff,2048);
         m_user.m_password.clear();
-        return std::string(buff);
+        char type[10] = {0};
+        char what[2038] = {0};
+        sscanf(buff,"%s : %s",type,what);
+        if(strcmp(type,"Success")){
+            m_ter.sprint(buff);
+        }else{
+            m_ter.eprint(buff);
+        }
+        return 1;
     }
 
     constexpr auto SocketConnection::set_user(User& user) noexcept{

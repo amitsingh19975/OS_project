@@ -94,7 +94,6 @@ int main(int argv, char** argc){
                 //     exit(0);
                 // }
                 auto mess = s.login();
-                t.sprint("Connected!");
                 wait(t);
                 selected = USER;
                 break;
@@ -102,7 +101,7 @@ int main(int argv, char** argc){
             case CHAT:{
                 disable();
                 s.conn_to(user_idx);
-                
+
                 chat_menu(t,s);
                 break;
             }
