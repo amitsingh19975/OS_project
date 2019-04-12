@@ -2,7 +2,6 @@
 #include "server.h"
 
 // Number of online users and total users
-sem_t count_sem;
 int online_users;
 int total_users;
 
@@ -71,8 +70,6 @@ int server_init(int *server_fd) {
         perror("User Init");
         return 1;
     }
-
-    sem_init(&count_sem, 0, 1);
     int in_connection;
     // Run the client process threads
     pthread_t client_conns[MAX_CONN];
@@ -103,19 +100,70 @@ int server_init(int *server_fd) {
             close(users[j].connection);
         }
     }
-    sem_close(&count_sem);
     return 0;
 }
 
 void *client_process_init(void *param) {
     int connection = *(int *) param;
-    sem_wait(&count_sem);
-    online_users++;
-    sem_post(&count_sem);
-    puts("Clinet Initialzed");
+    pthread_t tid_send;
+    pthread_t tid_recv;
+    char first_contact[2048];
+    char username[MAX_LEN] = {0};
+    char password[MAX_LEN] = {0};
+    char user_to[MAX_LEN] = {0};
+    recv(connection, first_contact, 2048, 0);
+    sscanf(first_contact, "%s : %s", username, password);
+    trim(username);
+    trim(password);
+    int index = authenticate(username, password);
+    char *payload;
+    char response_message[2048] = {0};
+    if (index != -1) {
+        sprintf(response_message, "%s : %d", "SUCCESS", online_users);
+        users[index].status = ONLINE;
+        users[index].connection = connection;
+        online_users++;
+        write(connection, response_message, 2048);
+        payload = (char *)malloc(MAX_LEN*online_users*sizeof(char));
+        cat_online_user(payload);
+        write(connection, payload, strlen(payload) + 1);
+    }
+    else {
+        sprint(response_message, "%s : %s", "FAIL", "USER OR PASS");
+        write(connection, response_message, 2048);
+        close(connection);
+        pthread_exit(EXIT_FAILURE);
+    }
 }
 
+void cat_online_user(char payload[]) {
+    for (int i = 0; i<total_users; i++) {
+        if (users[i].status == ONLINE) {
+            strcat(payload, users[i].username);
+            strcat(payload, ' ');
+        }
+    }
+} 
 
+int authenticate(char user[], char pass[]) {
+    // Return:
+    // 0 for succes
+    // 1 for user error
+    // 2 for pass error
+    int index = search_user(user);
+    if (index == -1){
+        return -1;
+    }
+    if (!strcmp(users[index].password, pass)) {
+        return -1;
+    }
+    return index;
+}
+
+void close_connection(int connection) {
+    close(connection);
+    online_users--;
+}
 
 int user_init() {
     total_users = 0;
