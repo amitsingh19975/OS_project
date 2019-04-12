@@ -72,7 +72,8 @@ int server_init(int *server_fd) {
     int con_count = 0;
     while (con_count <= MAX_CONN) {
         // TODO: Create a case to handle more that MAX connections
-        if (in_connection = accept(*server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen) < 0) {
+        if (in_connection = accept(*server_fd, (struct sockaddr *)
+        &address, (socklen_t *)&addrlen) < 0) {
             perror("Error accepting connection");
             return 1;
         }
@@ -116,14 +117,14 @@ void *client_process_init(void *param) {
         users[index].status = ONLINE;
         users[index].connection = connection;
         online_users++;
-        write(connection, response_message, 2048);
+        send(connection, response_message, 2048, 0);
         payload = (char *)malloc(MAX_LEN*online_users*sizeof(char));
         cat_online_user(payload, users[index].username);
-        write(connection, payload, strlen(payload) + 1);
+        send(connection, payload, strlen(payload) + 1, 0);
     }
     else {
         sprint(response_message, "%s : %s", "FAIL", "USER OR PASS");
-        write(connection, response_message, 2048);
+        send(connection, response_message, 2048, 0);
         close(connection);
         pthread_exit(NULL);
     }
