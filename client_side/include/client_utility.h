@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <cstdio>
+#include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <thread>
@@ -57,7 +58,7 @@ namespace chat_utility{
         SocketConnection() = default;
         SocketConnection(terminal::Terminal const& t):m_ter(t){}
         SocketConnection(User& user):m_user(std::move(user)),m_fd(-1){}
-        constexpr auto set_user(User& user) noexcept;
+        auto set_user(User& user) noexcept;
         auto conn()     noexcept;
         auto conn_to(uint32_t)  noexcept;
         auto send()     noexcept;
@@ -129,7 +130,7 @@ namespace chat_utility{
         return 1;
     }
 
-    constexpr auto SocketConnection::set_user(User& user) noexcept{
+    auto SocketConnection::set_user(User& user) noexcept{
         assert(user.is_set());
         m_user = std::move(user);
     }
