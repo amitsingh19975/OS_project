@@ -106,6 +106,7 @@ void *client_process_init(void *param) {
     char password[MAX_LEN] = {0};
     char user_to[MAX_LEN] = {0};
     recv(connection, first_contact, 2048, 0);
+    puts(first_contact);
     sscanf(first_contact, "%s : %s", username, password);
     trim(username);
     trim(password);
@@ -114,6 +115,7 @@ void *client_process_init(void *param) {
     char response_message[2048] = {0};
     if (index != -1) {
         sprintf(response_message, "%s : %d", "SUCCESS", online_users);
+        sprint("User: %s connected", users[index].username);
         users[index].status = ONLINE;
         users[index].connection = connection;
         online_users++;
