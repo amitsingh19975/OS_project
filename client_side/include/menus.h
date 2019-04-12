@@ -117,7 +117,12 @@ namespace chat_utility{
 
     auto chat_menu(terminal::Terminal& t, SocketConnection& sc , int y = 0){
         
-        chat_menu_helper(t,sc,y);
+        // chat_menu_helper(t,sc,y);
+        std::thread s(&SocketConnection::send,&sc);
+        std::thread r(&SocketConnection::send,&sc);
+
+        s.join();
+        r.join();
     }
 
     auto user_menu(terminal::Terminal& t, std::map<uint32_t,std::string> const& list){

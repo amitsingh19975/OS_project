@@ -72,8 +72,8 @@ int server_init(int *server_fd) {
     int con_count = 0;
     while (con_count <= MAX_CONN) {
         // TODO: Create a case to handle more that MAX connections
-        if (in_connection = accept(*server_fd, (struct sockaddr *)
-        &address, (socklen_t *)&addrlen) < 0) {
+        in_connection = accept(*server_fd, (struct sockaddr *)&NULL, NULL);
+        if (in_connection < 0) {
             perror("Error accepting connection");
             return 1;
         }
@@ -101,11 +101,11 @@ void *client_process_init(void *param) {
     int connection = *(int *) param;
     pthread_t tid_send;
     pthread_t tid_recv;
-    char first_contact[2048];
+    char first_contact[2048] = {0};
     char username[MAX_LEN] = {0};
     char password[MAX_LEN] = {0};
     char user_to[MAX_LEN] = {0};
-    recv(connection, first_contact, 2048, 0);
+    read(connection, first_contact, 2048);
     puts(first_contact);
     sscanf(first_contact, "%s : %s", username, password);
     trim(username);
