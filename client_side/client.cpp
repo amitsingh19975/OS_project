@@ -31,10 +31,18 @@ auto padding_map(std::map<T,std::string>& list){
     }
 }
 
+auto wait(Terminal& t){
+    int selected = 0;
+    int pressed = 0;
+    int max = 0;
+    key_event(t,selected, pressed, max);
+}
+
 int main(int argv, char** argc){
     Terminal t;
     User user;
-    SocketConnection    s;
+    uint32_t user_idx;        
+    SocketConnection s(t);
     int selected        =   MAIN;
     bool is_running     =   true;
     int max_scroll      =   0;
@@ -67,7 +75,14 @@ int main(int argv, char** argc){
             }
             case USER :{
                 max_scroll = user_list.size();
-                user_menu(t,user_list);
+                user_idx = user_menu(t, user_list);
+                if(user_idx == -1){
+                    menu = MAIN;
+                    t.eprint("No User Found!");
+                    wait(t);
+                }else{
+                    menu = CHAT;
+                }
                 break;
             }
             case LOGIN:{
@@ -79,8 +94,16 @@ int main(int argv, char** argc){
                 //     exit(0);
                 // }
                 auto mess = s.login();
-                // t.sprint("Hello");
+                t.sprint("Connected!");
+                wait(t);
                 selected = USER;
+                break;
+            }
+            case CHAT:{
+                disable();
+                s.conn_to(user_idx);
+                
+                chat_menu(t,s);
                 break;
             }
         }

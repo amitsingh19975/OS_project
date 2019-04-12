@@ -54,20 +54,23 @@ namespace chat_utility{
     struct SocketConnection{
 
         SocketConnection() = default;
+        SocketConnection(terminal::Terminal const& t):m_ter(t){}
         SocketConnection(User& user):m_user(std::move(user)),m_fd(-1){}
         constexpr auto set_user(User& user) noexcept;
         auto conn()     noexcept;
-        auto send()     const noexcept;
-        auto recv()     const noexcept;
+        auto conn_to(uint32_t)  noexcept;
+        auto send()     noexcept;
+        auto recv()     noexcept;
         auto login()    noexcept;
         [[nodiscard]] constexpr auto get_user_list() const noexcept
             ->std::map<uint32_t,std::string> const&;
 
     private:
-        int                                 m_fd;
+        int                                 m_fd{-1};
         User                                m_user;
+        terminal::Terminal                  m_ter;
         std::mutex                          m_mu;
-        std::map<uint32_t,std::string> m_list;
+        std::map<uint32_t,std::string>      m_list;
     };
 
     auto SocketConnection::conn() noexcept{
@@ -80,6 +83,15 @@ namespace chat_utility{
 
         inet_pton(AF_INET, "127.0.0.1", &client.sin_addr);
         return connect(m_fd,reinterpret_cast<sockaddr*>(&client), sizeof(client));
+    }
+
+    auto SocketConnection::conn_to(uint32_t idx) noexcept{
+        char payload[2048]  = {0};
+        char buff[2048]     = {0};
+        size_t len = sprintf(payload,"%s",m_list.at(idx).c_str());
+        write(m_fd,payload,len);
+        len = read(m_fd,buff,2048);
+        return std::string(buff);
     }
 
     auto SocketConnection::login() noexcept{
@@ -102,7 +114,11 @@ namespace chat_utility{
         return m_list;
     } 
 
-    auto SocketConnection::send() const noexcept{
+    auto SocketConnection::send() noexcept{
+        if(m_fd != -1){
+            m_ter.eprint("No Server found!\r\n");
+            return;
+        }
         
     }
 }
