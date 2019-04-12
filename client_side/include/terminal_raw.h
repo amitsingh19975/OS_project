@@ -39,7 +39,7 @@ namespace terminal{
         auto getWindowSize() const noexcept;
         auto getCursorPosition() const noexcept;
         auto wScreen(std::string_view, int x = 0, int y = 0);
-        auto wScreenCentre(std::string_view, int y = 0);
+        auto wScreenCentre(std::string_view, int y = 0, int x_offset = 0);
 
         inline static termios origonalState;
     };
@@ -187,13 +187,15 @@ namespace terminal{
         write(1,text.c_str(),text.size());
     }
 
-    auto Terminal::wScreenCentre(std::string_view str, int y){
+    auto Terminal::wScreenCentre(std::string_view str, int y, int x_offset){
         auto [row,col] = getWindowSize();
         int x = col - str.size();
         x /= 2;
+        x += x_offset;
         std::string text(str);
         text = "\x1b["+ std::to_string(y) +";"+ std::to_string(x) + "H" + text;
         write(1,text.c_str(),text.size());
+        return x;
     }
 }
 

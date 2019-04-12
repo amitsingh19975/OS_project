@@ -94,6 +94,11 @@ namespace chat_utility{
     template < FG TextColour, BG BackgroundColour = BG::NONE> 
     struct Bit_3_4{
         constexpr Bit_3_4() = default;
+
+        constexpr Bit_3_4(FG text_color, BG background): m_fg(text_color),m_bg(background){}
+        constexpr Bit_3_4(FG text_color): m_fg(text_color){}
+        constexpr Bit_3_4(BG background): m_bg(background){}
+
         auto to_string() const noexcept{
             if (m_bg == BG::NONE){
                 return std::to_string(static_cast<uint16_t>(m_fg));
@@ -145,6 +150,7 @@ namespace chat_utility{
     auto format(std::string_view text){
         return format<Colour,TextFormat...>(text,Colour{});
     }
+
 }
 
 #endif // COLOR_H

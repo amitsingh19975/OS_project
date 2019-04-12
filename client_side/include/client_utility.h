@@ -2,6 +2,7 @@
 #define CLIENT_UTILITY_H
 
 #include <iostream>
+#include <vector>
 #include <cstdio>
 #include <cstdlib>
 #include <thread>
@@ -17,6 +18,9 @@
 #include "color.h"
 
 namespace chat_utility{
+
+    using header_color = Bit_3_4<FG::BLUE>;
+    using menu_color = Bit_3_4<FG::GREEN>;
 
     struct SocketConnection;
 
@@ -74,7 +78,6 @@ namespace chat_utility{
         client.sin_port = htons(8096);
 
         inet_pton(AF_INET, "127.0.0.1", &client.sin_addr);
-        std::cout<<m_user.m_username<<'-'<<m_user.m_password<<'\n';
         return connect(m_fd,reinterpret_cast<sockaddr*>(&client), sizeof(client));
     }
 
@@ -92,12 +95,44 @@ namespace chat_utility{
         m_user = std::move(user);
     }
 
-    auto main_menu(terminal::Terminal& t){
+    auto uniform_padding(std::string& el, size_t m){
+        auto len = el.size() < m ? m - el.size() : 0;
+        len /= 2;
+        el = std::string(len,' ') + el + std::string(len,' ');
+    }
+
+    auto main_menu(terminal::Terminal& t, int selected = 1){
+        const int Max = 20;        
         t.clearScreen();
         int y = 0;
-        using color = Bit_3_4<FG::BLUE>;
-        auto b = format<color,TF::ITALIC,TF::BOLD>("Welcome to OS Project\r\n");
-        t.wScreenCentre(b, y);
+        auto b = format<header_color,TF::BOLD>("Welcome to OS Project");
+        t.wScreenCentre(b, y,2);
+        
+        std::vector<std::string> list = {"Login","Exit"};
+        
+        auto m = 0u;
+        for(auto const& el : list){
+            if(m < el.size()){
+                m = el.size();
+            }
+        }
+
+        for(auto & el : list){
+            uniform_padding(el, m + 5);
+        }
+        y += 3;
+        for(auto i = 0; i < list.size(); i++){
+            if(selected == i){
+                b = format(list[i],menu_color{FG::WHITE,BG::GREEN});
+            }else{
+                b = format<menu_color>(list[i]);
+            }
+            m = m > b.size() ? m : b.size();
+            t.wScreenCentre(b, y++);
+        }
+        
+        t.wScreen("\r\n");
+
     }
 
 }
