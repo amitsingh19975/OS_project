@@ -21,6 +21,8 @@
 #include "string_utility.h"
 #include <map>
 
+#define MAX_BYTE 2048
+
 namespace chat_utility{
 
     struct SocketConnection;
@@ -29,13 +31,13 @@ namespace chat_utility{
         
         User():m_is_init(false){}
         User(std::string& user, std::string& pass):m_username(std::move(user)),m_password(std::move(pass)),m_is_init(true){
-            assert(m_username.size() < 1024);
-            assert(m_password.size() < 1024);
+            assert(m_username.size() < MAX_BYTE / 2);
+            assert(m_password.size() < MAX_BYTE / 2);
         }
         User(std::string& user):m_username(std::move(user)),m_is_init(true){
-            assert(m_username.size() < 1024);
+            assert(m_username.size() < MAX_BYTE / 2);
             m_password = std::string(getpass(""));
-            assert(m_password.size() < 1024);
+            assert(m_password.size() < MAX_BYTE / 2);
         }
 
         constexpr auto is_set() const noexcept{
@@ -68,11 +70,15 @@ namespace chat_utility{
             ->std::map<uint32_t,std::string> const&;
 
     private:
-        int                                 m_fd{-1};
-        User                                m_user;
-        terminal::Terminal                  m_ter;
+        std::string                         m_conn_to;
+        std::string                         m_mess_send;
+        std::string                         m_mess_recv;
         std::mutex                          m_mu;
         std::map<uint32_t,std::string>      m_list;
+        terminal::Terminal                  m_ter;
+        User                                m_user;
+        int                                 m_fd{-1};
+        bool                                m_connected{true};
     };
 
     auto SocketConnection::conn() noexcept{
@@ -92,15 +98,19 @@ namespace chat_utility{
             m_ter.eprint("Not Connected to Server!\r\n");
             return 0;
         }
-        char payload[2048]  = {0};
-        char buff[2048]     = {0};
-        size_t len = sprintf(payload,"%s",m_list.at(idx).c_str());
-        write(m_fd,payload,len);
-        len = read(m_fd,buff,2048);
+        char payload[MAX_BYTE]  = {0};
+        char buff[MAX_BYTE]     = {0};
         char type[10] = {0};
-        char what[2038] = {0};
+        char what[MAX_BYTE - 10] = {0};
+        m_conn_to = m_list.at(idx);
+        size_t len = sprintf(payload,"%s",m_conn_to.c_str());
+        
+        write(m_fd,payload,len);
+        len = read(m_fd,buff,MAX_BYTE);
+        
         sscanf(buff,"%s : %s",type,what);
-        if(strcmp(type,"Success")){
+        
+        if(strcmp(type,"Success") == 0){
             m_ter.sprint(buff);
         }else{
             m_ter.eprint(buff);
@@ -113,20 +123,25 @@ namespace chat_utility{
             m_ter.eprint("Not Connected to Server!\r\n");
             return 0;
         }
-        char payload[2048]  = {0};
-        char buff[2048]     = {0};
-        size_t len = sprintf(payload,"%s : %s",m_user.m_username.c_str(),m_user.m_password.c_str());
-        write(m_fd,payload,len);
-        len = read(m_fd,buff,2048);
-        m_user.m_password.clear();
+        char payload[MAX_BYTE]  = {0};
+        char buff[MAX_BYTE]     = {0};
         char type[10] = {0};
-        char what[2038] = {0};
+        char what[MAX_BYTE - 10] = {0};
+        
+        size_t len = sprintf(payload,"%s : %s",m_user.m_username.c_str(),m_user.m_password.c_str());
+        
+        write(m_fd,payload,len);
+        len = read(m_fd,buff, MAX_BYTE);
+        m_user.m_password.clear();
+        
         sscanf(buff,"%s : %s",type,what);
-        if(strcmp(type,"Success")){
+        
+        if(strcmp(type,"Success") == 0){
             m_ter.sprint(buff);
         }else{
             m_ter.eprint(buff);
         }
+
         return 1;
     }
 
@@ -142,10 +157,40 @@ namespace chat_utility{
 
     auto SocketConnection::send() noexcept{
         if(m_fd != -1){
-            m_ter.eprint("No Server found!\r\n");
+            auto str = format<Bit_3_4<FG::RED>,TF::BOLD>("Connect to SERVER!\r\n");
+            write(1,str.c_str(),str.size());
             return;
         }
-        
+        char payload[MAX_BYTE];
+        std::string str;
+        while(m_connected){
+            if(read(0,payload,MAX_BYTE) == -1){
+                str = format<Bit_3_4<FG::RED>,TF::BOLD>("Server Got Disconnectd!\r\n");
+                write(1,str.c_str(),str.size());
+                break;
+            }else{
+                write(m_fd, payload, MAX_BYTE);
+            }
+        }
+    }
+
+    auto SocketConnection::recv() noexcept{
+        if(m_fd != -1){
+            auto str = format<Bit_3_4<FG::RED>,TF::BOLD>("Connect to SERVER!\r\n");
+            write(1,str.c_str(),str.size());
+            return;
+        }
+        char payload[MAX_BYTE];
+        std::string str;
+        while(m_connected){
+            if(read(m_fd, payload, MAX_BYTE) == -1){
+                str = format<Bit_3_4<FG::RED>,TF::BOLD>("Server Got Disconnectd!\r\n");
+                write(1,str.c_str(),str.size());
+                break;
+            }else{
+                str = format<Bit_3_4<FG::BRIGHT_MAGENTA>,TF::BOLD>(m_conn_to) + ": " +std::string(payload);
+            }
+        }
     }
 }
 

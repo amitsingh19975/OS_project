@@ -88,11 +88,11 @@ int main(int argv, char** argc){
             case LOGIN:{
                 login_menu(t,user);
                 s.set_user(user);
-                // if(s.conn() == -1){
-                //     t.eprint("Error: Unable to Connect To Server!\r\n");
-                //     disable();
-                //     exit(0);
-                // }
+                if(s.conn() == -1){
+                    t.eprint("Error: Unable to Connect To Server!\r\n");
+                    disable();
+                    exit(0);
+                }
                 auto mess = s.login();
                 wait(t);
                 selected = USER;
