@@ -93,8 +93,11 @@ int main(int argv, char** argc){
                     disable();
                     exit(0);
                 }
-                auto mess = s.login();
+                auto res = s.login();
                 wait(t);
+                if(!res){
+                    exit(1);
+                }
                 selected = USER;
                 break;
             }
