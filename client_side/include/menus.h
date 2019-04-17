@@ -123,6 +123,7 @@ namespace chat_utility{
 
         s.join();
         r.join();
+        sc.close_con();
     }
 
     auto user_menu(terminal::Terminal& t, std::map<uint32_t,std::string> const& list){
