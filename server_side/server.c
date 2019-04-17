@@ -117,7 +117,9 @@ void *client_process_init(void *param) {
     trim(username);
     trim(password);
     int index = authenticate(username, password);
-    char *payload;
+    // payload: /user n <users>
+    char payload[1024] = {0};
+    sprintf(payload, "/user %d ",online_users);
     char response_message[2048] = {0};
     if (index != -1) {
         sprintf(response_message, "%s : %d", "SUCCESS", online_users);
@@ -126,9 +128,9 @@ void *client_process_init(void *param) {
         users[index].connection = connection;
         online_users++;
         send(connection, response_message, 2048, 0);
-        payload = (char *)malloc(MAX_LEN*online_users*sizeof(char));
         cat_online_user(payload, users[index].username);
-        send(connection, payload, strlen(payload) + 1, 0);
+        send(connection, payload, 1024, 0);
+        printf("Payload: %s\n", payload);
     }
     else {
         sprintf(response_message, "%s : %s", "FAIL", "USER OR PASS");
@@ -140,7 +142,7 @@ void *client_process_init(void *param) {
 
 void cat_online_user(char payload[], char username[]) {
     for (int i = 0; i<total_users; i++) {
-        if (users[i].status == ONLINE && !strcmp(users[i].username, username)) {
+        if (users[i].status == ONLINE && strcmp(users[i].username, username)) {
             strcat(payload, users[i].username);
             strcat(payload, " ");
         }
