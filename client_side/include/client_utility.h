@@ -7,6 +7,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
+#include <sstream>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -26,6 +27,47 @@
 namespace chat_utility{
 
     struct SocketConnection;
+
+    enum class COMMANDS : u_char{
+        USER,
+        NONE
+    };
+
+    auto string_to_commands(std::string_view str){
+        if(str == "user") return COMMANDS::USER;
+        else return COMMANDS::NONE;
+    }
+    
+    auto commands_to_string(COMMANDS c){
+        switch (c){
+        
+        case COMMANDS::USER:
+            return std::string("user");
+        default:
+            return std::string("none");
+        }
+    }
+    
+    auto is_command(std::string_view str){
+        return str[0] == '/';
+    }
+
+    auto parse_message(std::string_view str){
+        if(!is_command){
+            return make_tuple(COMMANDS::NONE,str,std::ptrdiff_t(-1));
+        }
+        COMMANDS c;
+        std::string com;
+        size_t i = 1u;
+        for(; i < str.size(); i++){
+            if(str[i] == ' '){
+                break;
+            }
+            com.push_back(str[i]);
+        }
+
+        return make_tuple(string_to_commands(com),str,std::ptrdiff_t(i+1));
+    }
 
     struct User{
         
@@ -66,11 +108,14 @@ namespace chat_utility{
         auto recv() noexcept;
         auto login() noexcept;
         auto conn_to(uint32_t) noexcept;
-        void get_users(size_t size) noexcept;
         [[nodiscard]] constexpr auto get_user_list() const noexcept
             ->std::map<uint32_t,std::string> const&;
 
     private:
+        void waiting_room(std::string_view, size_t) noexcept;
+        void set_users(std::string_view) noexcept;
+        void set_users_str(std::string_view) noexcept;
+
         std::string                         m_conn_to;
         std::string                         m_mess_send;
         std::string                         m_mess_recv;
@@ -126,36 +171,65 @@ namespace chat_utility{
         }
         char payload[MAX_BYTE]  = {0};
         char buff[MAX_BYTE]     = {0};
-        char type[10] = {0};
-        char what[MAX_BYTE - 10] = {0};
         
         size_t len = sprintf(payload,"%s : %s",m_user.m_username.c_str(),m_user.m_password.c_str());
-        auto temp = write(m_fd,payload,len);
-        terminal::disable();
-
-        len = read(m_fd,buff, MAX_BYTE);
         m_user.m_password.clear();
-        sscanf(buff,"%s : %s",type,what);
-        m_ter.init();
+        
+        write(m_fd,payload,len);
 
-        if(strcmp(type,"SUCCESS") == 0){
-            m_ter.sprint(buff);
+        read(m_fd,buff, MAX_BYTE);
+
+        std::stringstream mess(buff);
+        std::string what;
+
+        if(is_command(buff)){
+            m_ter.sprint("Success");
+            std::getline(mess,what,' ');
+            std::getline(mess,what,' ');
         }else{
             m_ter.eprint(buff);
         }
 
         size_t number_of_user{0};
         try{
-            number_of_user = atoll(what);
-            get_users(number_of_user);
+            number_of_user = stoll(what);
+            waiting_room(buff,number_of_user);
         }catch(...){
             m_ter.eprint("Unable to parse to Integer");
+            return 0;
         }
         return 1;
     }
 
-    void SocketConnection::get_users(size_t size) noexcept{
+    void SocketConnection::set_users_str(std::string_view str) noexcept{
+        std::string temp(str);
+        std::stringstream ss(temp);
+        std::string s;
+        int i = 0;
+        int j = 0;
 
+        while(std::getline(ss,s,' ')){
+            if(i++ < 2) continue;
+            m_list[j++] = s;
+        }
+    }
+
+    void SocketConnection::waiting_room(std::string_view str, size_t size) noexcept{
+        if(size != 0) set_users_str(str);
+
+        char buff[MAX_BYTE];
+        while(size == 0){
+            if((read(m_fd,buff, MAX_BYTE) == -1) 
+                && !is_command(buff) 
+                && std::get<0>(parse_message(buff)) != COMMANDS::USER){
+                m_ter.eprint("Internal Server Error");
+                terminal::disable();
+                exit(1);
+            }
+
+            set_users_str(buff);
+            size = m_list.size();
+        }
     }
 
     auto SocketConnection::set_user(User& user) noexcept{
@@ -208,6 +282,7 @@ namespace chat_utility{
             }
         }
     }
+
 }
 
 #endif // CLIENT_UTILITY_H
