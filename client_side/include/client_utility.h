@@ -61,11 +61,12 @@ namespace chat_utility{
         SocketConnection(terminal::Terminal const& t):m_ter(t){}
         SocketConnection(User& user):m_user(std::move(user)),m_fd(-1){}
         auto set_user(User& user) noexcept;
-        auto conn()     noexcept;
-        auto conn_to(uint32_t)  noexcept;
-        auto send()     noexcept;
-        auto recv()     noexcept;
-        auto login()    noexcept;
+        auto conn() noexcept;
+        auto send() noexcept;
+        auto recv() noexcept;
+        auto login() noexcept;
+        auto conn_to(uint32_t) noexcept;
+        void get_users(size_t size) noexcept;
         [[nodiscard]] constexpr auto get_user_list() const noexcept
             ->std::map<uint32_t,std::string> const&;
 
@@ -131,21 +132,30 @@ namespace chat_utility{
         size_t len = sprintf(payload,"%s : %s",m_user.m_username.c_str(),m_user.m_password.c_str());
         auto temp = write(m_fd,payload,len);
         terminal::disable();
-        std::cout<<payload<<"==>"<<temp<<'\n';
-        exit(0);
+
         len = read(m_fd,buff, MAX_BYTE);
         m_user.m_password.clear();
-        
         sscanf(buff,"%s : %s",type,what);
-        
+        m_ter.init();
+
         if(strcmp(type,"SUCCESS") == 0){
             m_ter.sprint(buff);
-
         }else{
             m_ter.eprint(buff);
         }
 
+        size_t number_of_user{0};
+        try{
+            number_of_user = atoll(what);
+            get_users(number_of_user);
+        }catch(...){
+            m_ter.eprint("Unable to parse to Integer");
+        }
         return 1;
+    }
+
+    void SocketConnection::get_users(size_t size) noexcept{
+
     }
 
     auto SocketConnection::set_user(User& user) noexcept{
