@@ -32,6 +32,7 @@ namespace chat_utility{
         USER,
         NONE
     };
+    
 
     auto string_to_commands(std::string_view str){
         if(str == "user") return COMMANDS::USER;
@@ -67,6 +68,27 @@ namespace chat_utility{
         }
 
         return make_tuple(string_to_commands(com),str,std::ptrdiff_t(i+1));
+    }
+
+
+    auto uniform_padding(std::string& el, size_t m){
+        auto len = el.size() < m ? m - el.size() : 0;
+        len /= 2;
+        el = std::string(len,' ') + el + std::string(len,' ');
+    }
+
+    template<typename T>
+    auto padding_map(std::map<T,std::string>& list){
+        auto m = 0u;
+        for(auto const& [k,el] : list){
+            if(m < el.size()){
+                m = el.size();
+            }
+        }
+
+        for(auto & [k,el] : list){
+            uniform_padding(el, m + 5);
+        }
     }
 
     struct User{
@@ -156,18 +178,19 @@ namespace chat_utility{
         char type[10] = {0};
         char what[MAX_BYTE - 10] = {0};
         m_conn_to = m_list.at(idx);
+        m_conn_to = trim(m_conn_to);
         size_t len = sprintf(payload,"%s",m_conn_to.c_str());
-        
+        m_ter.wprint(m_conn_to);
         write(m_fd,payload,len);
-        len = read(m_fd,buff,MAX_BYTE);
+        // len = read(m_fd,buff,MAX_BYTE);
         
-        sscanf(buff,"%s : %s",type,what);
+        // sscanf(buff,"%s : %s",type,what);
         
-        if(strcmp(type,"SUCCESS") == 0){
-            m_ter.sprint(buff);
-        }else{
-            m_ter.eprint(buff);
-        }
+        // if(strcmp(type,"SUCCESS") == 0){
+        //     m_ter.sprint(buff);
+        // }else{
+        //     m_ter.eprint(buff);
+        // }
         return 1;
     }
 
@@ -190,14 +213,14 @@ namespace chat_utility{
         std::string what;
 
         if(is_command(buff)){
-            m_ter.sprint("Successfuly connected");
+            m_ter.sprint("Successfully connected");
             std::getline(mess,what,' ');
             std::getline(mess,what,' ');
         }else{
             m_ter.eprint(buff);
             return 0;
         }
-
+        
         size_t number_of_user{0};
         try{
             number_of_user = stoll(what);
@@ -220,6 +243,8 @@ namespace chat_utility{
             if(i++ < 2) continue;
             m_list[j++] = s;
         }
+
+        padding_map(m_list);
     }
 
     void SocketConnection::waiting_room(std::string_view str, size_t size) noexcept{
