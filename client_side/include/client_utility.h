@@ -110,7 +110,7 @@ namespace chat_utility{
         
         sscanf(buff,"%s : %s",type,what);
         
-        if(strcmp(type,"Success") == 0){
+        if(strcmp(type,"SUCCESS") == 0){
             m_ter.sprint(buff);
         }else{
             m_ter.eprint(buff);
@@ -129,15 +129,18 @@ namespace chat_utility{
         char what[MAX_BYTE - 10] = {0};
         
         size_t len = sprintf(payload,"%s : %s",m_user.m_username.c_str(),m_user.m_password.c_str());
-        
-        write(m_fd,payload,len);
+        auto temp = write(m_fd,payload,len);
+        terminal::disable();
+        std::cout<<payload<<"==>"<<temp<<'\n';
+        exit(0);
         len = read(m_fd,buff, MAX_BYTE);
         m_user.m_password.clear();
         
         sscanf(buff,"%s : %s",type,what);
         
-        if(strcmp(type,"Success") == 0){
+        if(strcmp(type,"SUCCESS") == 0){
             m_ter.sprint(buff);
+
         }else{
             m_ter.eprint(buff);
         }
@@ -165,6 +168,7 @@ namespace chat_utility{
         std::string str;
         while(m_connected){
             if(read(0,payload,MAX_BYTE) == -1){
+                m_connected = false;
                 str = format<Bit_3_4<FG::RED>,TF::BOLD>("Server Got Disconnectd!\r\n");
                 write(1,str.c_str(),str.size());
                 break;
@@ -184,11 +188,13 @@ namespace chat_utility{
         std::string str;
         while(m_connected){
             if(read(m_fd, payload, MAX_BYTE) == -1){
+                m_connected = false;
                 str = format<Bit_3_4<FG::RED>,TF::BOLD>("Server Got Disconnectd!\r\n");
                 write(1,str.c_str(),str.size());
                 break;
             }else{
-                str = format<Bit_3_4<FG::BRIGHT_MAGENTA>,TF::BOLD>(m_conn_to) + ": " +std::string(payload);
+                str = format<Bit_3_4<FG::BRIGHT_MAGENTA>,TF::BOLD>(m_conn_to) + ": " +std::string(payload) +"\r\n";
+                write(1,str.c_str(),str.size());
             }
         }
     }

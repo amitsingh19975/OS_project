@@ -108,11 +108,11 @@ void *client_process_init(void *param) {
     int connection = *(int *)param;
     pthread_t tid_send;
     pthread_t tid_recv;
-    char first_contact[2048];
+    char first_contact[2048] = {0};
     char username[MAX_LEN] = {0};
     char password[MAX_LEN] = {0};
     char user_to[MAX_LEN] = {0};
-    recv(connection, first_contact, 2048, 0);
+    read(connection, first_contact, 2048);
     puts(first_contact);
     sscanf(first_contact, "%s : %s", username, password);
     trim(username);

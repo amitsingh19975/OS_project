@@ -101,7 +101,6 @@ int main(int argv, char** argc){
             case CHAT:{
                 disable();
                 s.conn_to(user_idx);
-
                 chat_menu(t,s);
                 break;
             }
