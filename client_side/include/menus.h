@@ -40,12 +40,6 @@ namespace chat_utility{
         return true;
     }
 
-    auto uniform_padding(std::string& el, size_t m){
-        auto len = el.size() < m ? m - el.size() : 0;
-        len /= 2;
-        el = std::string(len,' ') + el + std::string(len,' ');
-    }
-
     auto main_menu_helper(terminal::Terminal& t, std::vector<std::string>& list,int selected){
         
         t.clearScreen();
@@ -129,7 +123,6 @@ namespace chat_utility{
     auto user_menu(terminal::Terminal& t, std::map<uint32_t,std::string> const& list){
         int selected = 0;
         int pressed = -1;
-
         if(!list.size()){
             return -1;
         }

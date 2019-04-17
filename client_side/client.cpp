@@ -17,19 +17,7 @@ auto padding_vector(std::vector<std::string>& list){
         uniform_padding(el, m + 5);
     }
 }
-template<typename T>
-auto padding_map(std::map<T,std::string>& list){
-    auto m = 0u;
-    for(auto const& [k,el] : list){
-        if(m < el.size()){
-            m = el.size();
-        }
-    }
 
-    for(auto & [k,el] : list){
-        uniform_padding(el, m + 5);
-    }
-}
 
 auto wait(Terminal& t){
     int selected = 0;
@@ -77,12 +65,11 @@ int main(int argv, char** argc){
                 max_scroll = user_list.size();
                 user_idx = user_menu(t, user_list);
                 if(user_idx == -1){
-                    menu = MAIN;
+                    selected = MAIN;
                     t.eprint("No User Found!");
                     wait(t);
-                }else{
-                    menu = CHAT;
                 }
+                selected = CHAT;
                 break;
             }
             case LOGIN:{
@@ -93,8 +80,8 @@ int main(int argv, char** argc){
                     s.close_con();
                 }
                 auto res = s.login();
-                wait(t);
                 if(!res){
+                    wait(t);
                     s.close_con();
                 }
                 user_list = s.get_user_list();
@@ -102,8 +89,8 @@ int main(int argv, char** argc){
                 break;
             }
             case CHAT:{
-                disable();
                 s.conn_to(user_idx);
+                disable();
                 chat_menu(t,s);
                 break;
             }
