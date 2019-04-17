@@ -113,7 +113,6 @@ void *client_process_init(void *param) {
     char password[MAX_LEN] = {0};
     char user_to[MAX_LEN] = {0};
     read(connection, first_contact, 2048);
-    puts(first_contact);
     sscanf(first_contact, "%s : %s", username, password);
     trim(username);
     trim(password);
@@ -132,7 +131,7 @@ void *client_process_init(void *param) {
         send(connection, payload, strlen(payload) + 1, 0);
     }
     else {
-        sprint(response_message, "%s : %s", "FAIL", "USER OR PASS");
+        sprintf(response_message, "%s : %s", "FAIL", "USER OR PASS");
         send(connection, response_message, 2048, 0);
         close(connection);
         pthread_exit(NULL);
@@ -153,7 +152,7 @@ int authenticate(char user[], char pass[]) {
     if (index == -1){
         return -1;
     }
-    if (!strcmp(users[index].password, pass)) {
+    if (strcmp(users[index].password, pass)) {
         return -1;
     }
     return index;
@@ -163,7 +162,7 @@ int search_user(char user[]) {
     int i;
     for ( i = 0; i < total_users; i++)
     {
-        if (strcmp(user, users[i].username)){
+        if (!strcmp(user, users[i].username)){
             return i;
         }
     }
