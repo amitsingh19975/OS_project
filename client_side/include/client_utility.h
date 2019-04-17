@@ -73,13 +73,13 @@ namespace chat_utility{
         
         User():m_is_init(false){}
         User(std::string& user, std::string& pass):m_username(std::move(user)),m_password(std::move(pass)),m_is_init(true){
-            assert(m_username.size() < MAX_BYTE / 2);
-            assert(m_password.size() < MAX_BYTE / 2);
+            assert(m_username.size() <= 100);
+            assert(m_password.size() <= 100);
         }
         User(std::string& user):m_username(std::move(user)),m_is_init(true){
-            assert(m_username.size() < MAX_BYTE / 2);
+            assert(m_username.size() <= 100);
             m_password = std::string(getpass(""));
-            assert(m_password.size() < MAX_BYTE / 2);
+            assert(m_password.size() <= 100);
         }
 
         constexpr auto is_set() const noexcept{
@@ -108,6 +108,7 @@ namespace chat_utility{
         auto recv() noexcept;
         auto login() noexcept;
         auto conn_to(uint32_t) noexcept;
+        auto close_con() noexcept;
         [[nodiscard]] constexpr auto get_user_list() const noexcept
             ->std::map<uint32_t,std::string> const&;
 
@@ -126,6 +127,12 @@ namespace chat_utility{
         int                                 m_fd{-1};
         bool                                m_connected{true};
     };
+
+    auto SocketConnection::close_con() noexcept{
+        terminal::disable();
+        close(m_fd);
+        exit(1);
+    }
 
     auto SocketConnection::conn() noexcept{
         sockaddr_in client;
@@ -183,11 +190,12 @@ namespace chat_utility{
         std::string what;
 
         if(is_command(buff)){
-            m_ter.sprint("Success");
+            m_ter.sprint("Successfuly connected");
             std::getline(mess,what,' ');
             std::getline(mess,what,' ');
         }else{
             m_ter.eprint(buff);
+            return 0;
         }
 
         size_t number_of_user{0};
@@ -218,13 +226,13 @@ namespace chat_utility{
         if(size != 0) set_users_str(str);
 
         char buff[MAX_BYTE];
+
         while(size == 0){
             if((read(m_fd,buff, MAX_BYTE) == -1) 
                 && !is_command(buff) 
                 && std::get<0>(parse_message(buff)) != COMMANDS::USER){
                 m_ter.eprint("Internal Server Error");
-                terminal::disable();
-                exit(1);
+                close_con();
             }
 
             set_users_str(buff);

@@ -96,34 +96,34 @@ int server_init() {
             con_count++;
         }
         else {
-            struct pollfd pfd;
-            pfd.fd = in_connection;
-            pfd.events = POLLIN | POLLHUP;
-            pfd.revents = 0;
-            while (pfd.revents == 0) {
-                // Call poll with a timeout of 100 ms
-                if (poll(&pfd, 1, 100) > 0){
-                    // if result > 0 , this means that there is either data available on the socket
-                    // or the socket has been closed
-                    char buffer[32];
-                    if (recv(in_connection, buffer, sizeof(buffer), MSG_PEEK | MSG_DONTWAIT) == 0) {
-                        // If receive returns 0 this means connection has been closed 
-                        // kill child process
-                        puts("A client dropped connection");
-                        for (int i = 0; i< total_users; i++) {
-                            if (users[i].status == ONLINE && users[i].connection == in_connection) {
-                                online_users--;
-                                printf("Online Users: %d", online_users);
-                                printf("User %s closed connection\n", users[i].username);
-                                user_reset(i);
-                            }
-                        }
-                        kill (childProcess, SIGKILL);
-                        waitpid(childProcess, NULL, WNOHANG);
-				        close(in_connection);
-                    }
-                }
-            }
+            // struct pollfd pfd;
+            // pfd.fd = in_connection;
+            // pfd.events = POLLIN | POLLHUP;
+            // pfd.revents = 0;
+            // while (pfd.revents == 0) {
+            //     // Call poll with a timeout of 100 ms
+            //     if (poll(&pfd, 1, 100) > 0){
+            //         // if result > 0 , this means that there is either data available on the socket
+            //         // or the socket has been closed
+            //         char buffer[32];
+            //         if (recv(in_connection, buffer, sizeof(buffer), MSG_PEEK | MSG_DONTWAIT) == 0) {
+            //             // If receive returns 0 this means connection has been closed 
+            //             // kill child process
+            //             puts("A client dropped connection");
+            //             for (int i = 0; i< total_users; i++) {
+            //                 if (users[i].status == ONLINE && users[i].connection == in_connection) {
+            //                     online_users--;
+            //                     printf("Online Users: %d", online_users);
+            //                     printf("User %s closed connection\n", users[i].username);
+            //                     user_reset(i);
+            //                 }
+            //             }
+            //             kill (childProcess, SIGKILL);
+            //             waitpid(childProcess, NULL, WNOHANG);
+			// 	        close(in_connection);
+            //         }
+            //     }
+            // }
 
         }
     }

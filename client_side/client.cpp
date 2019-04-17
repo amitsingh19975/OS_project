@@ -90,13 +90,12 @@ int main(int argv, char** argc){
                 s.set_user(user);
                 if(s.conn() == -1){
                     t.eprint("Error: Unable to Connect To Server!\r\n");
-                    disable();
-                    exit(0);
+                    s.close_con();
                 }
                 auto res = s.login();
                 wait(t);
                 if(!res){
-                    exit(1);
+                    s.close_con();
                 }
                 user_list = s.get_user_list();
                 selected = USER;
@@ -112,6 +111,6 @@ int main(int argv, char** argc){
         // is_running = key_event(t,selected, pressed, max_scroll);
         
     }
-    disable();
+    s.close_con();
     return 0;
 }
