@@ -2,7 +2,7 @@
 #include "server.h"
 
 // Number of online users and total users
-int online_users;
+int online_users = 0;
 int total_users;
 
 struct User {
@@ -32,7 +32,7 @@ int main(int argc, char const *argv[])
 
 int server_init() {
     int server_fd;
-    online_users = 0;
+    // online_users = 0;
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
@@ -84,9 +84,48 @@ int server_init() {
             perror("Error accepting connection");
             return 1;
         }
-        pthread_attr_init(&client_thread_attr[con_count]);
-        pthread_create(&client_conns[con_count], &client_thread_attr[con_count], client_process_init, (void *)&in_connection);
-        con_count++;
+        // Create a child proccess to chech if the connection is closed or not
+        pid_t childProcess = fork();
+        if (childProcess == (pid_t)-1) {
+	        perror("Unable to create new process for client connection");
+	        return 1;
+        }
+        else if (childProcess == 0) {
+            pthread_attr_init(&client_thread_attr[con_count]);
+            pthread_create(&client_conns[con_count], &client_thread_attr[con_count], client_process_init, (void *)&in_connection);
+            con_count++;
+        }
+        else {
+            struct pollfd pfd;
+            pfd.fd = in_connection;
+            pfd.events = POLLIN | POLLHUP;
+            pfd.revents = 0;
+            while (pfd.revents == 0) {
+                // Call poll with a timeout of 100 ms
+                if (poll(&pfd, 1, 100) > 0){
+                    // if result > 0 , this means that there is either data available on the socket
+                    // or the socket has been closed
+                    char buffer[32];
+                    if (recv(in_connection, buffer, sizeof(buffer), MSG_PEEK | MSG_DONTWAIT) == 0) {
+                        // If receive returns 0 this means connection has been closed 
+                        // kill child process
+                        puts("A client dropped connection");
+                        for (int i = 0; i< total_users; i++) {
+                            if (users[i].status == ONLINE && users[i].connection == in_connection) {
+                                online_users--;
+                                printf("Online Users: %d", online_users);
+                                printf("User %s closed connection\n", users[i].username);
+                                user_reset(i);
+                            }
+                        }
+                        kill (childProcess, SIGKILL);
+                        waitpid(childProcess, NULL, WNOHANG);
+				        close(in_connection);
+                    }
+                }
+            }
+
+        }
     }
     // Closing server
     for (size_t j = 0; j < con_count; j++)
@@ -121,28 +160,42 @@ void *client_process_init(void *param) {
     char payload[1024] = {0};
     sprintf(payload, "/user %d ",online_users);
     char response_message[2048] = {0};
-    if (index != -1) {
-        sprintf(response_message, "%s : %d", "SUCCESS", online_users);
+    if (index >= 0) {
+        // Broadcast to all online users new payload
+        cat_online_user(payload);
+        broadcast_to_online(payload);
         sprint("User: %s connected", users[index].username);
         users[index].status = ONLINE;
         users[index].connection = connection;
         online_users++;
-        send(connection, response_message, 2048, 0);
-        cat_online_user(payload, users[index].username);
         send(connection, payload, 1024, 0);
         printf("Payload: %s\n", payload);
     }
-    else {
-        sprintf(response_message, "%s : %s", "FAIL", "USER OR PASS");
+    else if (index == -1) {
+        sprintf(response_message, "%s : %s", "FAIL", "WRONG USERNAME OR PASSWORD");
+        send(connection, response_message, 2048, 0);
+        close(connection);
+        pthread_exit(NULL);
+    } else if (index == -2) {
+        sprintf(response_message, "%s : %s", "FAIL", "ALREADY LOGGED IN");
         send(connection, response_message, 2048, 0);
         close(connection);
         pthread_exit(NULL);
     }
 }
 
-void cat_online_user(char payload[], char username[]) {
+void broadcast_to_online (char payload[]) {
+    int i;
     for (int i = 0; i<total_users; i++) {
-        if (users[i].status == ONLINE && strcmp(users[i].username, username)) {
+        if (users[i].status == ONLINE) {
+            send(users[i].connection, payload, 1024, 0);
+        }
+    }
+}
+
+void cat_online_user(char payload[]) {
+    for (int i = 0; i<total_users; i++) {
+        if (users[i].status == ONLINE) {
             strcat(payload, users[i].username);
             strcat(payload, " ");
         }
@@ -151,11 +204,15 @@ void cat_online_user(char payload[], char username[]) {
 
 int authenticate(char user[], char pass[]) {
     int index = search_user(user);
+
     if (index == -1){
         return -1;
     }
     if (strcmp(users[index].password, pass)) {
         return -1;
+    }
+    if (is_online(user)){
+        return -2;
     }
     return index;
 }
@@ -169,6 +226,17 @@ int search_user(char user[]) {
         }
     }
     return -1;
+}
+
+int is_online(char user[]) {
+    int i;
+    for (i = 0; i < total_users; i++)
+    {
+        if (users[i].status == ONLINE && !strcmp(user, users[i].username)) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 void close_connection(int connection) {
