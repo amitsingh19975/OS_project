@@ -21,9 +21,8 @@ struct User {
 
 int main(int argc, char const *argv[])
 {
-    int server_fd;
     // Initialize server and inits the server_fd value
-    if (server_init(&server_fd)) {
+    if (server_init()) {
         eprint("Error Initializing Server");
         exit(EXIT_FAILURE);
     }
@@ -31,29 +30,38 @@ int main(int argc, char const *argv[])
     return 0;
 }
 
-int server_init(int *server_fd) {
+int server_init() {
+    int server_fd;
     online_users = 0;
     struct sockaddr_in address;
+    int opt = 1;
     int addrlen = sizeof(address);
     // Create a socket connection
-    if ((*server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
     {
         perror("Socket failed");
         return 1;
     }
     
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
+    {
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
+    }
+
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
 
+
     // Forcefully attaching socket to the port 8080
-    if (bind(*server_fd, (struct sockaddr *)&address, addrlen) < 0)
+    if (bind(server_fd, (struct sockaddr *)&address, addrlen) < 0)
     {
         perror("Error in binding address to socket");
         return 1;
     }
     // Put server in listen mode
-    if (listen(*server_fd, MAX_CONN) < 0)
+    if (listen(server_fd, MAX_CONN) < 0)
     {
         perror("listen");
         return 1;
@@ -72,8 +80,7 @@ int server_init(int *server_fd) {
     int con_count = 0;
     while (con_count <= MAX_CONN) {
         // TODO: Create a case to handle more that MAX connections
-        if (in_connection = accept(*server_fd, (struct sockaddr *)
-        &address, (socklen_t *)&addrlen) < 0) {
+        if ((in_connection = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) {
             perror("Error accepting connection");
             return 1;
         }
@@ -98,7 +105,7 @@ int server_init(int *server_fd) {
 }
 
 void *client_process_init(void *param) {
-    int connection = *(int *) param;
+    int connection = *(int *)param;
     pthread_t tid_send;
     pthread_t tid_recv;
     char first_contact[2048];
@@ -142,10 +149,6 @@ void cat_online_user(char payload[], char username[]) {
 } 
 
 int authenticate(char user[], char pass[]) {
-    // Return:
-    // 0 for succes
-    // 1 for user error
-    // 2 for pass error
     int index = search_user(user);
     if (index == -1){
         return -1;

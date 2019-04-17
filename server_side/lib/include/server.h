@@ -5,7 +5,7 @@
 #define MAX_LEN 100
 #define MAX_MSG 2048
 #define USERDIR "../users"
-int server_init(int *);
+int server_init();
 int user_init();
 void user_reset(int);
 int authenticate(char*, char*);
