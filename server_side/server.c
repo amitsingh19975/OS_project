@@ -91,10 +91,54 @@ int server_init()
             return 1;
         }
         // Create a child proccess to chech if the connection is closed or not
+<<<<<<< HEAD
         pthread_attr_init(&client_thread_attr[con_count]);
         pthread_create(&client_conns[con_count], &client_thread_attr[con_count], client_process_init, (void *)&in_connection);
         con_count++;
         printf("Number of connections %d \n", con_count);
+=======
+        pid_t childProcess = fork();
+        if (childProcess == (pid_t)-1) {
+	        perror("Unable to create new process for client connection");
+	        return 1;
+        }
+        else if (childProcess == 0) {
+            pthread_attr_init(&client_thread_attr[con_count]);
+            pthread_create(&client_conns[con_count], &client_thread_attr[con_count], client_process_init, (void *)&in_connection);
+            con_count++;
+        }
+        else {
+            // struct pollfd pfd;
+            // pfd.fd = in_connection;
+            // pfd.events = POLLIN | POLLHUP;
+            // pfd.revents = 0;
+            // while (pfd.revents == 0) {
+            //     // Call poll with a timeout of 100 ms
+            //     if (poll(&pfd, 1, 100) > 0){
+            //         // if result > 0 , this means that there is either data available on the socket
+            //         // or the socket has been closed
+            //         char buffer[32];
+            //         if (recv(in_connection, buffer, sizeof(buffer), MSG_PEEK | MSG_DONTWAIT) == 0) {
+            //             // If receive returns 0 this means connection has been closed 
+            //             // kill child process
+            //             puts("A client dropped connection");
+            //             for (int i = 0; i< total_users; i++) {
+            //                 if (users[i].status == ONLINE && users[i].connection == in_connection) {
+            //                     online_users--;
+            //                     printf("Online Users: %d", online_users);
+            //                     printf("User %s closed connection\n", users[i].username);
+            //                     user_reset(i);
+            //                 }
+            //             }
+            //             kill (childProcess, SIGKILL);
+            //             waitpid(childProcess, NULL, WNOHANG);
+			// 	        close(in_connection);
+            //         }
+            //     }
+            // }
+
+        }
+>>>>>>> cde1eb231f6d9c563b9b6068db79365213cbf434
     }
     // Closing server
     for (size_t j = 0; j < con_count; j++)

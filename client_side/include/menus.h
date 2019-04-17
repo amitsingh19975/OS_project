@@ -119,7 +119,7 @@ namespace chat_utility{
         
         // chat_menu_helper(t,sc,y);
         std::thread s(&SocketConnection::send,&sc);
-        std::thread r(&SocketConnection::send,&sc);
+        std::thread r(&SocketConnection::recv,&sc);
 
         s.join();
         r.join();
