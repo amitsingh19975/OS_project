@@ -21,8 +21,13 @@ struct User
     pthread_mutex_t mu;
 } * users;
 
+void graceful_exit(void) {
+    puts("Server Closing");
+}
+
 int main(int argc, char const *argv[])
 {
+    atexit(graceful_exit);
     // Initialize server and inits the server_fd value
     if (server_init())
     {
@@ -156,7 +161,14 @@ void *client_process_init(void *param)
         else
         {
             // Create a thread for Message Passing
-            
+            int otherIndex = search_user(userTo);
+            users[index].connected_to = users[otherIndex].connection;
+            users[otherIndex].connected_to = users[index].connection;
+            pthread_create(&tid_recv, NULL, client_process_recv, (void *)&index);
+
+            pthread_join(tid_recv, NULL);
+            close_connection(users[index].connection, index);
+            pthread_exit(NULL);
         }
     }
     else if (index == -1)
@@ -174,6 +186,21 @@ void *client_process_init(void *param)
         close(connection);
         con_count--;
         pthread_exit(NULL);
+    }
+}
+
+void *client_process_recv(void *param) {
+    int index = *(int *)param;
+    char message[MAX_MSG];
+    while (1) {
+        int len = read(users[index].connection, message, 2048);
+        if (len < 0) {
+            printf("User %s logged out\n", users[index].username);
+            pthread_exit(NULL);
+        }
+        else {
+            write(users[index].connected_to, message, 2048);
+        }
     }
 }
 
@@ -245,6 +272,7 @@ int search_user(char user[])
     return -1;
 }
 
+
 int is_online(char user[])
 {
     int i;
@@ -261,7 +289,9 @@ int is_online(char user[])
 void close_connection(int connection, int index)
 {
     online_users--;
-    user_reset(index);
+    users[index].connection = -1;
+    users[index].connected_to = -1;
+    users[index].status = OFFLINE;
     con_count--;
     close(connection);
 }
