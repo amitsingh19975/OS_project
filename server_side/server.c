@@ -132,22 +132,15 @@ void *client_process_init(void *param)
     trim(username);
     trim(password);
     int index = authenticate(username, password);
-    // payload: /user n <users>
-    char payload[1024] = {0};
-    sprintf(payload, "/user %d ", online_users);
     char response_message[2048] = {0};
     if (index >= 0)
     {
-        // Broadcast to all online users new payload
-        cat_online_user(payload);
-        broadcast_to_online(payload);
         sprint("User: %s connected", users[index].username);
         users[index].status = ONLINE;
         users[index].connection = connection;
         online_users++;
-        send(connection, payload, 1024, 0);
-        printf("Payload: %s\n", payload);
-
+        // Broadcast to all online users new payload
+        broadcast_to_online();
         // Accept User to be connected to.
         char userTo[100] = {0};
         if (read(connection, userTo, 100) < 0)
@@ -184,28 +177,40 @@ void *client_process_init(void *param)
     }
 }
 
-void broadcast_to_online(char payload[])
+void broadcast_to_online()
 {
-    int i;
-    for (int i = 0; i < total_users; i++)
+    char payload [1024] = {0};
+    int i, count = 0;
+    char buffer [1010] = {0};
+    for (i = 0; i < total_users; i++)
     {
         if (users[i].status == ONLINE)
         {
-            send(users[i].connection, payload, 1024, 0);
+            printf("Broadcasting online users to %s\n", users[i].username);
+            count = cat_online_user(buffer, i);
+            sprintf(payload, "/user %d %s", count, buffer);
+            printf("Payload is %s\n", payload);
+            write(users[i].connection, payload, 1024);
+            memset(buffer, 0, 1010);
+            memset(payload, 0, 1024);
         }
     }
 }
 
-void cat_online_user(char payload[])
+int cat_online_user(char payload[], int except)
 {
-    for (int i = 0; i < total_users; i++)
+    int count = 0;
+    int i;
+    for (i = 0; i < total_users; i++)
     {
-        if (users[i].status == ONLINE)
+        if (users[i].status == ONLINE && i != except)
         {
             strcat(payload, users[i].username);
             strcat(payload, " ");
+            count++;
         }
     }
+    return count;
 }
 
 int authenticate(char user[], char pass[])
