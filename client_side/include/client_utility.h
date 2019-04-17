@@ -180,7 +180,6 @@ namespace chat_utility{
         m_conn_to = m_list.at(idx);
         m_conn_to = trim(m_conn_to);
         size_t len = sprintf(payload,"%s",m_conn_to.c_str());
-        m_ter.wprint(m_conn_to);
         write(m_fd,payload,len);
         // len = read(m_fd,buff,MAX_BYTE);
         
@@ -276,7 +275,7 @@ namespace chat_utility{
     } 
 
     auto SocketConnection::send() noexcept{
-        if(m_fd != -1){
+        if(m_fd == -1){
             auto str = format<Bit_3_4<FG::RED>,TF::BOLD>("Connect to SERVER!\r\n");
             write(1,str.c_str(),str.size());
             return;
@@ -296,7 +295,7 @@ namespace chat_utility{
     }
 
     auto SocketConnection::recv() noexcept{
-        if(m_fd != -1){
+        if(m_fd == -1){
             auto str = format<Bit_3_4<FG::RED>,TF::BOLD>("Connect to SERVER!\r\n");
             write(1,str.c_str(),str.size());
             return;
