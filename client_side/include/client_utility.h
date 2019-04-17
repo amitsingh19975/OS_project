@@ -171,8 +171,6 @@ namespace chat_utility{
         }
         char payload[MAX_BYTE]  = {0};
         char buff[MAX_BYTE]     = {0};
-        char type[10] = {0};
-        char what[MAX_BYTE - 10] = {0};
         
         size_t len = sprintf(payload,"%s : %s",m_user.m_username.c_str(),m_user.m_password.c_str());
         m_user.m_password.clear();
@@ -194,24 +192,13 @@ namespace chat_utility{
 
         size_t number_of_user{0};
         try{
-            number_of_user = atoll(what);
+            number_of_user = stoll(what);
             waiting_room(buff,number_of_user);
         }catch(...){
             m_ter.eprint("Unable to parse to Integer");
             return 0;
         }
         return 1;
-    }
-
-    void SocketConnection::set_users(std::string_view str) noexcept{
-        std::string temp(str);
-        std::stringstream ss(temp);
-        std::string s;
-        int j = 0;
-
-        while(std::getline(ss,s,' ')){
-            m_list[j++] = s;
-        }
     }
 
     void SocketConnection::set_users_str(std::string_view str) noexcept{
@@ -228,10 +215,9 @@ namespace chat_utility{
     }
 
     void SocketConnection::waiting_room(std::string_view str, size_t size) noexcept{
-        if(size != 0) set_users(str);
+        if(size != 0) set_users_str(str);
 
         char buff[MAX_BYTE];
-
         while(size == 0){
             if((read(m_fd,buff, MAX_BYTE) == -1) 
                 && !is_command(buff) 

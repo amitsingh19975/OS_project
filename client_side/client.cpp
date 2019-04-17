@@ -51,12 +51,12 @@ int main(int argv, char** argc){
     std::vector<std::string> list = {"Login","Exit"};
     padding_vector(list);
 
-    std::map<uint32_t,std::string> user_list = {
-        {0,"amit"},
-        {1,"aamir"},
-        {2,"sv8"}
-    };
-
+    // std::map<uint32_t,std::string> user_list = {
+    //     {0,"amit"},
+    //     {1,"aamir"},
+    //     {2,"sv8"}
+    // };
+    auto user_list = s.get_user_list();
     padding_map(user_list);
 
     t.init();
@@ -98,6 +98,7 @@ int main(int argv, char** argc){
                 if(!res){
                     exit(1);
                 }
+                user_list = s.get_user_list();
                 selected = USER;
                 break;
             }
