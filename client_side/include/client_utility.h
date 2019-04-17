@@ -54,7 +54,7 @@ namespace chat_utility{
     }
 
     auto parse_message(std::string_view str){
-        if(!is_command){
+        if(!is_command(str)){
             return make_tuple(COMMANDS::NONE,str,std::ptrdiff_t(-1));
         }
         COMMANDS c;
@@ -131,11 +131,12 @@ namespace chat_utility{
         auto login() noexcept;
         auto conn_to(uint32_t) noexcept;
         auto close_con() noexcept;
+        void waiting_room(std::string_view, size_t) noexcept;
+        auto fd() const noexcept;
         [[nodiscard]] constexpr auto get_user_list() const noexcept
             ->std::map<uint32_t,std::string> const&;
 
     private:
-        void waiting_room(std::string_view, size_t) noexcept;
         void set_users(std::string_view) noexcept;
         void set_users_str(std::string_view) noexcept;
 
@@ -149,6 +150,10 @@ namespace chat_utility{
         int                                 m_fd{-1};
         bool                                m_connected{true};
     };
+
+    auto SocketConnection::fd() const noexcept{
+        return m_fd;
+    }
 
     auto SocketConnection::close_con() noexcept{
         terminal::disable();
@@ -235,6 +240,7 @@ namespace chat_utility{
         std::string temp(str);
         std::stringstream ss(temp);
         std::string s;
+        m_list.clear();
         int i = 0;
         int j = 0;
 
@@ -287,7 +293,7 @@ namespace chat_utility{
                 m_connected = false;
                 str = format<Bit_3_4<FG::RED>,TF::BOLD>("Server Got Disconnectd!\r\n");
                 write(1,str.c_str(),str.size());
-                break;
+                return;
             }else{
                 write(m_fd, payload, MAX_BYTE);
             }
@@ -307,9 +313,9 @@ namespace chat_utility{
                 m_connected = false;
                 str = format<Bit_3_4<FG::RED>,TF::BOLD>("Server Got Disconnectd!\r\n");
                 write(1,str.c_str(),str.size());
-                break;
+                return;
             }else{
-                str = format<Bit_3_4<FG::BRIGHT_MAGENTA>,TF::BOLD>(m_conn_to) + ": " +std::string(payload) +"\r\n";
+                str = format<Bit_3_4<FG::BRIGHT_MAGENTA>,TF::BOLD>(m_conn_to) + " : " +std::string(payload) +"\r\n";
                 write(1,str.c_str(),str.size());
             }
         }
