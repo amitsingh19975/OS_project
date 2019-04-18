@@ -17,6 +17,8 @@ struct User
     int connection;
     // Socket connection that it wants to chat to
     int connected_to;
+    // Other connection index
+    int other_index;
     // Lock
     pthread_mutex_t mu;
 } * users;
@@ -150,24 +152,32 @@ void *client_process_init(void *param)
         char userTo[100] = {0};
         if (read(connection, userTo, 100) < 0)
         {
-            close_connection(connection, index);
+            send_exit_message(connection);
+            close_connection(index);
+            close_connection(users[index].other_index);
             pthread_exit(NULL);
         }
         if (!is_online(userTo))
         {
-            close_connection(connection, index);
+            send_exit_message(connection);
+            close_connection(index);
+            close_connection(users[index].other_index);
             pthread_exit(NULL);
         }
         else
         {
             // Create a thread for Message Passing
-            int otherIndex = search_user(userTo);
-            users[index].connected_to = users[otherIndex].connection;
-            users[otherIndex].connected_to = users[index].connection;
+            int other_index = search_user(userTo);
+            users[index].connected_to = users[other_index].connection;
+            users[index].other_index =  other_index;
+
+            users[other_index].connected_to = users[index].connection;
+            users[other_index].other_index = index;
             pthread_create(&tid_recv, NULL, client_process_recv, (void *)&index);
 
             pthread_join(tid_recv, NULL);
-            close_connection(users[index].connection, index);
+            close_connection(index);
+            close_connection(users[index].other_index);
             pthread_exit(NULL);
         }
     }
@@ -197,17 +207,21 @@ void *client_process_recv(void *param) {
     while (1) {
         int len = read(users[index].connection, message, 2048);
         if (len < 0) {
-            printf("User %s logged out\n", users[index].username);
             // Send /exit signal to other connected user so that he can exit.
-            char ext_command[2048] = {0};
-            sprintf(ext_command, "%s", "/exit");
-            write(users[index].connected_to, ext_command, 2048);
+            send_exit_message(users[index].connected_to);
+            // Find the other connected function and send it back to the handshake state
             pthread_exit(NULL);
         }
         else {
             write(users[index].connected_to, message, 2048);
         }
     }
+}
+
+void send_exit_message(int connection) {
+    char ext_command[2048] = {0};
+    sprintf(ext_command, "%s", "/exit");
+    write(connection, ext_command, 2048);
 }
 
 void broadcast_to_online()
@@ -292,14 +306,16 @@ int is_online(char user[])
     return 0;
 }
 
-void close_connection(int connection, int index)
+void close_connection(int index)
 {
     online_users--;
+    printf("User %s logged out\n", users[index].username);
+    close(users[index].connection);
     users[index].connection = -1;
     users[index].connected_to = -1;
     users[index].status = OFFLINE;
+    users[index].other_index = -1;
     con_count--;
-    close(connection);
 }
 
 int user_init()
@@ -377,6 +393,7 @@ void user_reset(int index)
             users[i].status = OFFLINE;
             users[i].connection = -1;
             users[i].connected_to = -1;
+            users[i].other_index = -1;
             pthread_mutex_init(&(users[i].mu), NULL);
         }
     }
@@ -388,6 +405,7 @@ void user_reset(int index)
         users[index].status = OFFLINE;
         users[index].connection = -1;
         users[index].connected_to = -1;
+        users[index].other_index = -1;
         pthread_mutex_init(&(users[index].mu), NULL);
     }
 }
