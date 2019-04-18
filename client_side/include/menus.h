@@ -2,6 +2,7 @@
 #define MENUS_H
 
 #include "client_utility.h"
+#include <chrono>
 
 using namespace terminal;
 
@@ -34,6 +35,10 @@ namespace chat_utility{
             case ENTER_KEY:{
                 pressed = selected;
                 selected = 0;
+                return true;
+            }
+            case 'r':{
+                pressed = -2;
                 return true;
             }  
         }
@@ -120,16 +125,31 @@ namespace chat_utility{
         sc.close_con();
     }
 
-    auto user_menu(terminal::Terminal& t, std::map<uint32_t,std::string> const& list){
+    auto update_user_list(SocketConnection& sc){
+        int i = 0;
+        while(true){
+
+        }
+    }
+
+    auto user_menu(terminal::Terminal& t, SocketConnection& sc){
         int selected = 0;
         int pressed = -1;
-        if(!list.size()){
+        if(!sc.get_user_list().size()){
             return -1;
         }
 
-        while(pressed == -1){
-            user_menu_helper(t,list,selected);
-            key_event(t,selected,pressed,list.size());
+        bool valid = false;
+        char buff[2048];
+        while(pressed == -1  || pressed == -2){
+            user_menu_helper(t,sc.get_user_list(),selected);
+            key_event(t,selected,pressed,sc.get_user_list().size());
+            if(pressed == -2){
+                auto len = recv(sc.fd(),buff,2048,MSG_DONTWAIT);
+                if(len > 0){
+                    sc.waiting_room(buff,10);
+                }
+            }
         }
         return pressed;
     }

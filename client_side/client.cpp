@@ -63,7 +63,7 @@ int main(int argv, char** argc){
             }
             case USER :{
                 max_scroll = user_list.size();
-                user_idx = user_menu(t, user_list);
+                user_idx = user_menu(t, s);
                 if(user_idx == -1){
                     selected = MAIN;
                     t.eprint("No User Found!");
