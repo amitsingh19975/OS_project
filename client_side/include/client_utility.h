@@ -30,12 +30,14 @@ namespace chat_utility{
 
     enum class COMMANDS : u_char{
         USER,
+        SYNC,
         EXIT,
         NONE
     };
     
 
     auto string_to_commands(std::string_view str){
+        if(str == "sync") return COMMANDS::SYNC;
         if(str == "user") return COMMANDS::USER;
         if(str == "exit") return COMMANDS::EXIT;
         else return COMMANDS::NONE;
@@ -43,9 +45,11 @@ namespace chat_utility{
     
     auto commands_to_string(COMMANDS c){
         switch (c){
+        case COMMANDS::SYNC:
+            return std::string("sync");
         case COMMANDS::USER:
             return std::string("user");
-        case COMMANDS::USER:
+        case COMMANDS::EXIT:
             return std::string("exit");
         default:
             return std::string("none");
@@ -57,20 +61,43 @@ namespace chat_utility{
     }
 
     auto parse_message(std::string_view str){
+
         if(!is_command(str)){
-            return make_tuple(COMMANDS::NONE,str,std::ptrdiff_t(-1));
+            return make_tuple(COMMANDS::NONE,std::string());
         }
         COMMANDS c;
         std::string com;
-        size_t i = 1u;
-        for(; i < str.size(); i++){
-            if(str[i] == ' '){
-                break;
-            }
-            com.push_back(str[i]);
+        std::string mess;
+        std::string temp(str);
+        temp.erase(0,1);
+        auto it = temp.find('\n');
+        if(it != std::string::npos){
+            temp.erase(it);
         }
+        std::stringstream ss(temp);
+        std::getline(ss,com,' ');
+        std::getline(ss,mess);
+        return make_tuple(string_to_commands(com),mess);
+    }
 
-        return make_tuple(string_to_commands(com),str,std::ptrdiff_t(i+1));
+    auto parse_user(std::string_view str){
+        if(!is_command(str)){
+            return make_tuple(COMMANDS::NONE,std::string(),std::string(str));
+        }
+        COMMANDS c;
+        std::string com;
+        std::string user;
+        std::string temp(str);
+        std::string mess;
+        temp = trim(temp);
+        std::stringstream ss(temp);
+        std::getline(ss,com,' ');
+        com = trim(com);
+        std::getline(ss,user,' ');
+        user = trim(user);
+        std::getline(ss,mess,'\n');
+        mess = trim(mess);
+        return make_tuple(string_to_commands(com),user,mess);
     }
 
 
@@ -130,11 +157,11 @@ namespace chat_utility{
         auto set_user(User& user) noexcept;
         auto conn() noexcept;
         auto send() noexcept;
-        auto recv() noexcept;
+        auto recv() noexcept -> int;
         auto login() noexcept;
         auto conn_to(uint32_t) noexcept;
         auto close_con() noexcept;
-        void waiting_room(std::string_view, size_t) noexcept;
+        int waiting_room(std::string_view, size_t) noexcept;
         auto fd() const noexcept;
         [[nodiscard]] constexpr auto get_user_list() const noexcept
             ->std::map<uint32_t,std::string> const&;
@@ -179,7 +206,7 @@ namespace chat_utility{
     auto SocketConnection::conn_to(uint32_t idx) noexcept{
         if(m_fd == -1){
             m_ter.eprint("Not Connected to Server!\r\n");
-            return 0;
+            return 1;
         }
         char payload[MAX_BYTE]  = {0};
         char buff[MAX_BYTE]     = {0};
@@ -189,22 +216,13 @@ namespace chat_utility{
         m_conn_to = trim(m_conn_to);
         size_t len = sprintf(payload,"%s",m_conn_to.c_str());
         write(m_fd,payload,len);
-        // len = read(m_fd,buff,MAX_BYTE);
-        
-        // sscanf(buff,"%s : %s",type,what);
-        
-        // if(strcmp(type,"SUCCESS") == 0){
-        //     m_ter.sprint(buff);
-        // }else{
-        //     m_ter.eprint(buff);
-        // }
-        return 1;
+        return 0;
     }
 
     auto SocketConnection::login() noexcept{
         if(m_fd == -1){
             m_ter.eprint("Not Connected to Server!\r\n");
-            return 0;
+            return 1;
         }
         char payload[MAX_BYTE]  = {0};
         char buff[MAX_BYTE]     = {0};
@@ -218,29 +236,27 @@ namespace chat_utility{
 
         std::stringstream mess(buff);
         std::string what;
-
         if(is_command(buff)){
             m_ter.sprint("Successfully connected");
             std::getline(mess,what,' ');
             std::getline(mess,what,' ');
         }else{
             m_ter.eprint(buff);
-            return 0;
+            return 1;
         }
-        
         size_t number_of_user{0};
         try{
             number_of_user = stoll(what);
             auto ret = waiting_room(buff,number_of_user);
-            if(!ret){
+            if(ret){
                 m_ter.eprint("Server has Closed the Connection");
-                return 0;
+                return 1;
             }
         }catch(...){
             m_ter.eprint("Unable to parse to Integer");
-            return 0;
+            return 1;
         }
-        return 1;
+        return 0;
     }
 
     void SocketConnection::set_users_str(std::string_view str) noexcept{
@@ -259,7 +275,7 @@ namespace chat_utility{
         padding_map(m_list);
     }
 
-    void SocketConnection::waiting_room(std::string_view str, size_t size) noexcept{
+    int SocketConnection::waiting_room(std::string_view str, size_t size) noexcept{
 
         if(size != 0) set_users_str(str);
 
@@ -268,18 +284,19 @@ namespace chat_utility{
         while(size == 0){
             if((read(m_fd,buff, MAX_BYTE) == -1) 
                 && !is_command(buff) 
-                && std::get<0>(parse_message(buff)) != COMMANDS::USER){
+                && std::get<0>(parse_message(buff)) != COMMANDS::SYNC){
                 m_ter.eprint("Internal Server Error");
                 close_con();
             }
 
             if(std::get<0>(parse_message(str)) == COMMANDS::EXIT){
-                return 0;
+                return 1;
             }
 
             set_users_str(buff);
             size = m_list.size();
         }
+        return 0;
     }
 
     auto SocketConnection::set_user(User& user) noexcept{
@@ -296,46 +313,79 @@ namespace chat_utility{
         if(m_fd == -1){
             auto str = format<Bit_3_4<FG::RED>,TF::BOLD>("Connect to SERVER!\r\n");
             write(1,str.c_str(),str.size());
-            return;
+            return 1;
         }
+        
+        m_connected = true;
         char payload[MAX_BYTE];
         std::string str;
+       
         while(m_connected){
             if(read(0,payload,MAX_BYTE) == -1){
                 m_connected = false;
                 str = format<Bit_3_4<FG::RED>,TF::BOLD>("Server Got Disconnectd!\r\n");
                 write(1,str.c_str(),str.size());
-                return 0;
+                return 1;
             }
-            
-            write(m_fd, payload, MAX_BYTE);
+
+            if(strlen(payload) == 0) continue;
+            str = "/user " + m_user.get_user() + " " + std::string(payload);
+
+            switch(std::get<0>(parse_message(payload))){
+                case COMMANDS::EXIT : {
+                    write(m_fd, str.c_str(), MAX_BYTE);
+                    str = format<Bit_3_4<FG::RED>,TF::BOLD>("Successfully left the Chat Room!\r\n");
+                    write(1,str.c_str(),str.size());
+                    m_connected = false;
+                    return 2;
+                }
+                case COMMANDS::SYNC : {
+                    waiting_room(payload,10);
+                    continue;
+                }
+                default: break;
+            }
+            write(m_fd, str.c_str(), MAX_BYTE);
         }
+        return 0;
     }
 
-    auto SocketConnection::recv() noexcept{
+    auto SocketConnection::recv() noexcept -> int{
         if(m_fd == -1){
             auto str = format<Bit_3_4<FG::RED>,TF::BOLD>("Connect to SERVER!\r\n");
             write(1,str.c_str(),str.size());
-            return;
+            return 1;
         }
+        m_connected = true;
         char payload[MAX_BYTE];
         std::string str;
         while(m_connected){
-            if(read(m_fd, payload, MAX_BYTE) == -1){
-                m_connected = false;
-                str = format<Bit_3_4<FG::RED>,TF::BOLD>("Server Got Disconnectd!\r\n");
-                write(1,str.c_str(),str.size());
-                return 0;
+            if(::recv(m_fd,payload,MAX_BYTE,MSG_DONTWAIT) == -1){
+                continue;
             }
-            
-            if(std::get<0>(parse_message(payload)) == COMMANDS::EXIT){
-                m_connected = false;
-                return 2;
+            // if(read(m_fd, payload, MAX_BYTE) == -1){
+            //     m_connected = false;
+            //     str = format<Bit_3_4<FG::RED>,TF::BOLD>("User has left the Chat Room!\r\n");
+            //     write(1,str.c_str(),str.size());
+            //     return 1;
+            // }
+            str = format<Bit_3_4<FG::MAGENTA>,TF::BOLD>(std::get<1>(parse_user(payload))) + " : " +std::get<2>(parse_user(payload)) + "\n";
+            switch(std::get<0>(parse_message(std::get<2>(parse_user(payload))))){
+                case COMMANDS::EXIT : {
+                    m_connected = false;
+                    str = format<Bit_3_4<FG::RED>,TF::BOLD>("Every one left the Chat Room!\r\n");
+                    write(1,str.c_str(),str.size());
+                    return 2;
+                }
+                case COMMANDS::SYNC : {
+                    waiting_room(payload,10);
+                    continue;
+                }
+                default: break;
             }
-
-            str = format<Bit_3_4<FG::BRIGHT_MAGENTA>,TF::BOLD>(m_conn_to) + " : " +std::string(payload) +"\r\n";
             write(1,str.c_str(),str.size());
         }
+        return 0;
     }
 
 }

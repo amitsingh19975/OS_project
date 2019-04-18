@@ -221,7 +221,7 @@ void broadcast_to_online()
         {
             printf("Broadcasting online users to %s\n", users[i].username);
             count = cat_online_user(buffer, i);
-            sprintf(payload, "/user %d %s", count, buffer);
+            sprintf(payload, "/sync %d %s", count, buffer);
             printf("Payload is %s\n", payload);
             write(users[i].connection, payload, 1024);
             memset(buffer, 0, 1010);
