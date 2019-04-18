@@ -10,8 +10,9 @@ int user_init();
 void user_reset(int);
 int authenticate(char*, char*);
 int search_user(char*);
-void close_connection(int, int);
+void close_connection(int);
 int cat_online_user(char*, int);
+void send_exit_message(int);
 int is_online (char*);
 void broadcast_to_online();
 
