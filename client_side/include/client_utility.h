@@ -370,7 +370,13 @@ namespace chat_utility{
             //     return 1;
             // }
             str = format<Bit_3_4<FG::MAGENTA>,TF::BOLD>(std::get<1>(parse_user(payload))) + " : " +std::get<2>(parse_user(payload)) + "\n";
-            switch(std::get<0>(parse_message(std::get<2>(parse_user(payload))))){
+            std::string temp;
+            if(std::get<0>(parse_user(payload)) == COMMANDS::USER){
+                temp = std::get<2>(parse_user(payload));
+            }else{
+                temp = payload;
+            }
+            switch(std::get<0>(parse_message(temp))){
                 case COMMANDS::EXIT : {
                     m_connected = false;
                     str = format<Bit_3_4<FG::RED>,TF::BOLD>("Every one left the Chat Room!\r\n");
@@ -379,11 +385,15 @@ namespace chat_utility{
                 }
                 case COMMANDS::SYNC : {
                     waiting_room(payload,10);
+                    str.clear();
                     continue;
                 }
                 default: break;
             }
-            write(1,str.c_str(),str.size());
+            
+            if(str.size() != 0){
+                write(1,str.c_str(),str.size());
+            }
         }
         return 0;
     }
