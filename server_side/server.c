@@ -174,8 +174,8 @@ void *client_process_init(void *param)
             users[other_index].connected_to = users[index].connection;
             users[other_index].other_index = index;
             pthread_create(&tid_recv, NULL, client_process_recv, (void *)&index);
-
             pthread_join(tid_recv, NULL);
+            printf("Closing connection of %s\n", users[index].username);
             close_connection(index);
             close_connection(users[index].other_index);
             pthread_exit(NULL);
@@ -209,10 +209,23 @@ void *client_process_recv(void *param) {
         if (len < 0) {
             // Send /exit signal to other connected user so that he can exit.
             send_exit_message(users[index].connected_to);
-            // Find the other connected function and send it back to the handshake state
+            // Find the other connected function and exit it
+            close_connection(users[index].other_index);
             pthread_exit(NULL);
         }
         else {
+            // See If it is an exit command
+            if (message[0] == '/') {
+                char ext_msg[2048];
+                strcpy(ext_msg, message);
+                ext_msg[5] = 0;
+                printf("Message %s\n", ext_msg);
+                if (!strcmp(ext_msg, "/exit")){
+                    send_exit_message(users[index].connected_to);
+                    // Find the other connected function and exit it
+                    close_connection(users[index].other_index);
+                }
+            }
             write(users[index].connected_to, message, 2048);
         }
     }
