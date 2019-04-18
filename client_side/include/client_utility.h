@@ -17,88 +17,17 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <map>
 #include "terminal_raw.h"
 #include "color.h"
 #include "string_utility.h"
-#include <map>
+#include "command_utility.h"
 
 #define MAX_BYTE 2048
 
 namespace chat_utility{
 
     struct SocketConnection;
-
-    enum class COMMANDS : u_char{
-        USER,
-        SYNC,
-        EXIT,
-        NONE
-    };
-    
-
-    auto string_to_commands(std::string_view str){
-        if(str == "sync") return COMMANDS::SYNC;
-        if(str == "user") return COMMANDS::USER;
-        if(str == "exit") return COMMANDS::EXIT;
-        else return COMMANDS::NONE;
-    }
-    
-    auto commands_to_string(COMMANDS c){
-        switch (c){
-        case COMMANDS::SYNC:
-            return std::string("sync");
-        case COMMANDS::USER:
-            return std::string("user");
-        case COMMANDS::EXIT:
-            return std::string("exit");
-        default:
-            return std::string("none");
-        }
-    }
-    
-    auto is_command(std::string_view str){
-        return str[0] == '/';
-    }
-
-    auto parse_message(std::string_view str){
-
-        if(!is_command(str)){
-            return make_tuple(COMMANDS::NONE,std::string());
-        }
-        COMMANDS c;
-        std::string com;
-        std::string mess;
-        std::string temp(str);
-        temp.erase(0,1);
-        auto it = temp.find('\n');
-        if(it != std::string::npos){
-            temp.erase(it);
-        }
-        std::stringstream ss(temp);
-        std::getline(ss,com,' ');
-        std::getline(ss,mess);
-        return make_tuple(string_to_commands(com),mess);
-    }
-
-    auto parse_user(std::string_view str){
-        if(!is_command(str)){
-            return make_tuple(COMMANDS::NONE,std::string(),std::string(str));
-        }
-        COMMANDS c;
-        std::string com;
-        std::string user;
-        std::string temp(str);
-        std::string mess;
-        temp = trim(temp);
-        std::stringstream ss(temp);
-        std::getline(ss,com,' ');
-        com = trim(com);
-        std::getline(ss,user,' ');
-        user = trim(user);
-        std::getline(ss,mess,'\n');
-        mess = trim(mess);
-        return make_tuple(string_to_commands(com),user,mess);
-    }
 
 
     auto uniform_padding(std::string& el, size_t m){
@@ -216,6 +145,20 @@ namespace chat_utility{
         m_conn_to = trim(m_conn_to);
         size_t len = sprintf(payload,"%s",m_conn_to.c_str());
         write(m_fd,payload,len);
+
+        // auto cmd = std::get<0>(parse_message(payload));
+
+        // if( cmd == COMMANDS::PERMISSION ){
+        //     COMMANDS key = COMMANDS::NONE;
+        //     while( key != COMMANDS::YES || key != COMMANDS::NO){
+        //         key = static_cast<char>(m_ter.keyEvent());
+        //         if(key >= 'A' || key <= 'Z'){
+        //             key += ' ';
+        //         }
+        //     }
+        //     sprintf(buff,"/%s %c",commands_to_string(cmd).c_str(),key);
+        // }
+
         return 0;
     }
 
@@ -244,6 +187,7 @@ namespace chat_utility{
             m_ter.eprint(buff);
             return 1;
         }
+        
         size_t number_of_user{0};
         try{
             number_of_user = stoll(what);
