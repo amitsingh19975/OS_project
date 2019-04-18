@@ -192,10 +192,16 @@ void *client_process_init(void *param)
 void *client_process_recv(void *param) {
     int index = *(int *)param;
     char message[MAX_MSG];
+    // If connection to either User drops then send /exit command to the other
+    // Connected user so that he can go to menu screen.
     while (1) {
         int len = read(users[index].connection, message, 2048);
         if (len < 0) {
             printf("User %s logged out\n", users[index].username);
+            // Send /exit signal to other connected user so that he can exit.
+            char ext_command[2048] = {0};
+            sprintf(ext_command, "%s", "/exit");
+            write(users[index].connected_to, ext_command, 2048);
             pthread_exit(NULL);
         }
         else {
