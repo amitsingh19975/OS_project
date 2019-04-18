@@ -106,17 +106,9 @@ namespace chat_utility{
         t.wScreen("\r\n");
 
     }
-
-
-    auto chat_menu_helper(terminal::Terminal& t, SocketConnection& sc){
-        
-        
-
-    }
-
+    
     auto chat_menu(terminal::Terminal& t, SocketConnection& sc){
         
-        // chat_menu_helper(t,sc,y);
         std::future<int> s = std::async(std::launch::async,&SocketConnection::send,&sc);
         std::future<int> r = std::async(std::launch::async,&SocketConnection::recv,&sc);
 
@@ -125,13 +117,6 @@ namespace chat_utility{
         if(ret_r <= 2 || ret_s){
             sc.close_con();
             exit(0);
-        }
-    }
-
-    auto update_user_list(SocketConnection& sc){
-        int i = 0;
-        while(true){
-
         }
     }
 

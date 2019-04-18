@@ -311,16 +311,16 @@ namespace chat_utility{
 
     auto SocketConnection::send() noexcept{
         if(m_fd == -1){
-            auto str = format<Bit_3_4<FG::RED>,TF::BOLD>("Connect to SERVER!\r\n");
+            auto str = format<Bit_3_4<FG::RED>,TF::BOLD>("Connect to the SERVER!\r\n");
             write(1,str.c_str(),str.size());
             return 1;
         }
         
         m_connected = true;
-        char payload[MAX_BYTE];
-        std::string str;
        
         while(m_connected){
+            char payload[MAX_BYTE] = {0};
+            std::string str;
             if(read(0,payload,MAX_BYTE) == -1){
                 m_connected = false;
                 str = format<Bit_3_4<FG::RED>,TF::BOLD>("Server Got Disconnectd!\r\n");
@@ -329,6 +329,7 @@ namespace chat_utility{
             }
 
             if(strlen(payload) == 0) continue;
+
             str = "/user " + m_user.get_user() + " " + std::string(payload);
 
             switch(std::get<0>(parse_message(payload))){
@@ -352,40 +353,38 @@ namespace chat_utility{
 
     auto SocketConnection::recv() noexcept -> int{
         if(m_fd == -1){
-            auto str = format<Bit_3_4<FG::RED>,TF::BOLD>("Connect to SERVER!\r\n");
+            auto str = format<Bit_3_4<FG::RED>,TF::BOLD>("Connect to the SERVER!\r\n");
             write(1,str.c_str(),str.size());
             return 1;
         }
         m_connected = true;
-        char payload[MAX_BYTE];
-        std::string str;
         while(m_connected){
+            std::string str;
+            char payload[MAX_BYTE] = {0};
+            
             if(::recv(m_fd,payload,MAX_BYTE,MSG_DONTWAIT) == -1){
                 continue;
             }
-            // if(read(m_fd, payload, MAX_BYTE) == -1){
-            //     m_connected = false;
-            //     str = format<Bit_3_4<FG::RED>,TF::BOLD>("User has left the Chat Room!\r\n");
-            //     write(1,str.c_str(),str.size());
-            //     return 1;
-            // }
-            str = format<Bit_3_4<FG::MAGENTA>,TF::BOLD>(std::get<1>(parse_user(payload))) + " : " +std::get<2>(parse_user(payload)) + "\n";
-            std::string temp;
-            if(std::get<0>(parse_user(payload)) == COMMANDS::USER){
-                temp = std::get<2>(parse_user(payload));
-            }else{
+            
+            if(strlen(payload) == 0) continue;
+
+            auto [c, user, temp] = parse_user(payload);
+
+            str = format<Bit_3_4<FG::MAGENTA>,TF::BOLD>(user) + " : " + temp + "\n";
+
+            if(std::get<0>(parse_message(payload)) != COMMANDS::USER){
                 temp = payload;
             }
+
             switch(std::get<0>(parse_message(temp))){
                 case COMMANDS::EXIT : {
                     m_connected = false;
-                    str = format<Bit_3_4<FG::RED>,TF::BOLD>("Every one left the Chat Room!\r\n");
+                    str = format<Bit_3_4<FG::RED>,TF::BOLD>("Everyone has left the Chat Room!\r\n");
                     write(1,str.c_str(),str.size());
                     return 2;
                 }
                 case COMMANDS::SYNC : {
                     waiting_room(payload,10);
-                    str.clear();
                     continue;
                 }
                 default: break;
