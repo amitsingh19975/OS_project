@@ -80,7 +80,7 @@ int main(int argv, char** argc){
                     s.close_con();
                 }
                 auto res = s.login();
-                if(!res){
+                if(res){
                     wait(t);
                     s.close_con();
                 }
@@ -92,6 +92,9 @@ int main(int argv, char** argc){
                 s.conn_to(user_idx);
                 disable();
                 chat_menu(t,s);
+                if(s.fd() == -1){
+                    is_running = false;
+                }
                 break;
             }
         }
