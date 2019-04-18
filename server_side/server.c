@@ -224,6 +224,7 @@ void *client_process_recv(void *param) {
                     send_exit_message(users[index].connected_to);
                     // Find the other connected function and exit it
                     close_connection(users[index].other_index);
+                    pthread_exit(NULL);
                 }
             }
             write(users[index].connected_to, message, 2048);
