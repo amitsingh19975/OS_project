@@ -30,20 +30,23 @@ namespace chat_utility{
 
     enum class COMMANDS : u_char{
         USER,
+        EXIT,
         NONE
     };
     
 
     auto string_to_commands(std::string_view str){
         if(str == "user") return COMMANDS::USER;
+        if(str == "exit") return COMMANDS::EXIT;
         else return COMMANDS::NONE;
     }
     
     auto commands_to_string(COMMANDS c){
         switch (c){
-        
         case COMMANDS::USER:
             return std::string("user");
+        case COMMANDS::USER:
+            return std::string("exit");
         default:
             return std::string("none");
         }
@@ -158,7 +161,7 @@ namespace chat_utility{
     auto SocketConnection::close_con() noexcept{
         terminal::disable();
         close(m_fd);
-        exit(1);
+        exit(1); 
     }
 
     auto SocketConnection::conn() noexcept{
@@ -228,7 +231,11 @@ namespace chat_utility{
         size_t number_of_user{0};
         try{
             number_of_user = stoll(what);
-            waiting_room(buff,number_of_user);
+            auto ret = waiting_room(buff,number_of_user);
+            if(!ret){
+                m_ter.eprint("Server has Closed the Connection");
+                return 0;
+            }
         }catch(...){
             m_ter.eprint("Unable to parse to Integer");
             return 0;
@@ -253,6 +260,7 @@ namespace chat_utility{
     }
 
     void SocketConnection::waiting_room(std::string_view str, size_t size) noexcept{
+
         if(size != 0) set_users_str(str);
 
         char buff[MAX_BYTE];
@@ -263,6 +271,10 @@ namespace chat_utility{
                 && std::get<0>(parse_message(buff)) != COMMANDS::USER){
                 m_ter.eprint("Internal Server Error");
                 close_con();
+            }
+
+            if(std::get<0>(parse_message(str)) == COMMANDS::EXIT){
+                return 0;
             }
 
             set_users_str(buff);
@@ -293,10 +305,10 @@ namespace chat_utility{
                 m_connected = false;
                 str = format<Bit_3_4<FG::RED>,TF::BOLD>("Server Got Disconnectd!\r\n");
                 write(1,str.c_str(),str.size());
-                return;
-            }else{
-                write(m_fd, payload, MAX_BYTE);
+                return 0;
             }
+            
+            write(m_fd, payload, MAX_BYTE);
         }
     }
 
@@ -313,11 +325,16 @@ namespace chat_utility{
                 m_connected = false;
                 str = format<Bit_3_4<FG::RED>,TF::BOLD>("Server Got Disconnectd!\r\n");
                 write(1,str.c_str(),str.size());
-                return;
-            }else{
-                str = format<Bit_3_4<FG::BRIGHT_MAGENTA>,TF::BOLD>(m_conn_to) + " : " +std::string(payload) +"\r\n";
-                write(1,str.c_str(),str.size());
+                return 0;
             }
+            
+            if(std::get<0>(parse_message(payload)) == COMMANDS::EXIT){
+                m_connected = false;
+                return 2;
+            }
+
+            str = format<Bit_3_4<FG::BRIGHT_MAGENTA>,TF::BOLD>(m_conn_to) + " : " +std::string(payload) +"\r\n";
+            write(1,str.c_str(),str.size());
         }
     }
 

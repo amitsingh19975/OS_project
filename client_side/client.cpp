@@ -92,6 +92,9 @@ int main(int argv, char** argc){
                 s.conn_to(user_idx);
                 disable();
                 chat_menu(t,s);
+                if(s.fd() == -1){
+                    is_running = false;
+                }
                 break;
             }
         }

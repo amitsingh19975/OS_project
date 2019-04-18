@@ -2,7 +2,7 @@
 #define MENUS_H
 
 #include "client_utility.h"
-#include <chrono>
+#include <future>
 
 using namespace terminal;
 
@@ -108,21 +108,24 @@ namespace chat_utility{
     }
 
 
-    auto chat_menu_helper(terminal::Terminal& t, SocketConnection& sc , int y){
+    auto chat_menu_helper(terminal::Terminal& t, SocketConnection& sc){
         
         
 
     }
 
-    auto chat_menu(terminal::Terminal& t, SocketConnection& sc , int y = 0){
+    auto chat_menu(terminal::Terminal& t, SocketConnection& sc){
         
         // chat_menu_helper(t,sc,y);
         std::thread s(&SocketConnection::send,&sc);
-        std::thread r(&SocketConnection::recv,&sc);
+        std::future<int> r = std::async(&SocketConnection::recv,&sc)
 
         s.join();
         r.join();
-        sc.close_con();
+        auto ret = r.get();
+        if(ret <= 2){
+            sc.close_con();
+        }
     }
 
     auto update_user_list(SocketConnection& sc){
