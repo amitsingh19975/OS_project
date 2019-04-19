@@ -46,7 +46,6 @@ int main(int argv, char** argc){
     // };
     auto user_list = s.get_user_list();
     padding_map(user_list);
-
     t.init();
 
     while(is_running){
@@ -89,7 +88,10 @@ int main(int argv, char** argc){
                 break;
             }
             case CHAT:{
-                s.conn_to(user_idx);
+                if(s.conn_to(user_idx)){
+                    wait(t);
+                    s.close_con();
+                }
                 disable();
                 chat_menu(t,s);
                 if(s.fd() == -1){

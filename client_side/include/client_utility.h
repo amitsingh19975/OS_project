@@ -17,88 +17,17 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <map>
 #include "terminal_raw.h"
 #include "color.h"
 #include "string_utility.h"
-#include <map>
+#include "command_utility.h"
 
 #define MAX_BYTE 2048
 
 namespace chat_utility{
 
     struct SocketConnection;
-
-    enum class COMMANDS : u_char{
-        USER,
-        SYNC,
-        EXIT,
-        NONE
-    };
-    
-
-    auto string_to_commands(std::string_view str){
-        if(str == "sync") return COMMANDS::SYNC;
-        if(str == "user") return COMMANDS::USER;
-        if(str == "exit") return COMMANDS::EXIT;
-        else return COMMANDS::NONE;
-    }
-    
-    auto commands_to_string(COMMANDS c){
-        switch (c){
-        case COMMANDS::SYNC:
-            return std::string("sync");
-        case COMMANDS::USER:
-            return std::string("user");
-        case COMMANDS::EXIT:
-            return std::string("exit");
-        default:
-            return std::string("none");
-        }
-    }
-    
-    auto is_command(std::string_view str){
-        return str[0] == '/';
-    }
-
-    auto parse_message(std::string_view str){
-
-        if(!is_command(str)){
-            return make_tuple(COMMANDS::NONE,std::string());
-        }
-        COMMANDS c;
-        std::string com;
-        std::string mess;
-        std::string temp(str);
-        temp.erase(0,1);
-        auto it = temp.find('\n');
-        if(it != std::string::npos){
-            temp.erase(it);
-        }
-        std::stringstream ss(temp);
-        std::getline(ss,com,' ');
-        std::getline(ss,mess);
-        return make_tuple(string_to_commands(com),mess);
-    }
-
-    auto parse_user(std::string_view str){
-        if(!is_command(str)){
-            return make_tuple(COMMANDS::NONE,std::string(),std::string(str));
-        }
-        COMMANDS c;
-        std::string com;
-        std::string user;
-        std::string temp(str);
-        std::string mess;
-        temp = trim(temp);
-        std::stringstream ss(temp);
-        std::getline(ss,com,' ');
-        com = trim(com);
-        std::getline(ss,user,' ');
-        user = trim(user);
-        std::getline(ss,mess,'\n');
-        mess = trim(mess);
-        return make_tuple(string_to_commands(com),user,mess);
-    }
 
 
     auto uniform_padding(std::string& el, size_t m){
@@ -214,8 +143,26 @@ namespace chat_utility{
         char what[MAX_BYTE - 10] = {0};
         m_conn_to = m_list.at(idx);
         m_conn_to = trim(m_conn_to);
-        size_t len = sprintf(payload,"%s",m_conn_to.c_str());
+        size_t len = sprintf(payload,"/perm /user %s %s",m_user.get_user().c_str(),m_conn_to.c_str());
+        
         write(m_fd,payload,len);
+        
+        m_ter.wprint("Waiting for permission! Please wait...");
+        read(m_fd,buff,MAX_BYTE);
+        
+        auto [cmd, res] = parse_message(buff);
+        if(cmd == COMMANDS::PERMISSION){
+            if(res == "DENIED"){
+                m_ter.eprint("Permission Denied");
+                return 1;
+            }else if(res == "ACCEPTED"){
+                m_ter.sprint("Permission Accepted");
+                return 0;
+            }else{
+                m_ter.eprint(res);
+                return 1;
+            }
+        }
         return 0;
     }
 
@@ -244,6 +191,7 @@ namespace chat_utility{
             m_ter.eprint(buff);
             return 1;
         }
+        
         size_t number_of_user{0};
         try{
             number_of_user = stoll(what);
@@ -311,16 +259,16 @@ namespace chat_utility{
 
     auto SocketConnection::send() noexcept{
         if(m_fd == -1){
-            auto str = format<Bit_3_4<FG::RED>,TF::BOLD>("Connect to SERVER!\r\n");
+            auto str = format<Bit_3_4<FG::RED>,TF::BOLD>("Connect to the SERVER!\r\n");
             write(1,str.c_str(),str.size());
             return 1;
         }
         
         m_connected = true;
-        char payload[MAX_BYTE];
-        std::string str;
        
         while(m_connected){
+            char payload[MAX_BYTE] = {0};
+            std::string str;
             if(read(0,payload,MAX_BYTE) == -1){
                 m_connected = false;
                 str = format<Bit_3_4<FG::RED>,TF::BOLD>("Server Got Disconnectd!\r\n");
@@ -329,6 +277,7 @@ namespace chat_utility{
             }
 
             if(strlen(payload) == 0) continue;
+
             str = "/user " + m_user.get_user() + " " + std::string(payload);
 
             switch(std::get<0>(parse_message(payload))){
@@ -352,40 +301,38 @@ namespace chat_utility{
 
     auto SocketConnection::recv() noexcept -> int{
         if(m_fd == -1){
-            auto str = format<Bit_3_4<FG::RED>,TF::BOLD>("Connect to SERVER!\r\n");
+            auto str = format<Bit_3_4<FG::RED>,TF::BOLD>("Connect to the SERVER!\r\n");
             write(1,str.c_str(),str.size());
             return 1;
         }
         m_connected = true;
-        char payload[MAX_BYTE];
-        std::string str;
         while(m_connected){
+            std::string str;
+            char payload[MAX_BYTE] = {0};
+            
             if(::recv(m_fd,payload,MAX_BYTE,MSG_DONTWAIT) == -1){
                 continue;
             }
-            // if(read(m_fd, payload, MAX_BYTE) == -1){
-            //     m_connected = false;
-            //     str = format<Bit_3_4<FG::RED>,TF::BOLD>("User has left the Chat Room!\r\n");
-            //     write(1,str.c_str(),str.size());
-            //     return 1;
-            // }
-            str = format<Bit_3_4<FG::MAGENTA>,TF::BOLD>(std::get<1>(parse_user(payload))) + " : " +std::get<2>(parse_user(payload)) + "\n";
-            std::string temp;
-            if(std::get<0>(parse_user(payload)) == COMMANDS::USER){
-                temp = std::get<2>(parse_user(payload));
-            }else{
+            
+            if(strlen(payload) == 0) continue;
+
+            auto [c, user, temp] = parse_user(payload);
+
+            str = format<Bit_3_4<FG::MAGENTA>,TF::BOLD>(user) + " : " + temp + "\n";
+
+            if(std::get<0>(parse_message(payload)) != COMMANDS::USER){
                 temp = payload;
             }
+
             switch(std::get<0>(parse_message(temp))){
                 case COMMANDS::EXIT : {
                     m_connected = false;
-                    str = format<Bit_3_4<FG::RED>,TF::BOLD>("Every one left the Chat Room!\r\n");
+                    str = format<Bit_3_4<FG::RED>,TF::BOLD>("Everyone has left the Chat Room!\r\n");
                     write(1,str.c_str(),str.size());
                     return 2;
                 }
                 case COMMANDS::SYNC : {
                     waiting_room(payload,10);
-                    str.clear();
                     continue;
                 }
                 default: break;
