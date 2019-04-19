@@ -200,6 +200,7 @@ namespace chat_utility{
                         auto user = std::get<1>(parse_user(mess));
                         std::string str = user + " asking for permission. Press Y or N\r\n";
                         t.wprint(str);
+                        terminal::disable();
                         while(key_pressed != 'y' && key_pressed != 'n' && 
                             key_pressed != 'Y' && key_pressed != 'N'){
                         };
