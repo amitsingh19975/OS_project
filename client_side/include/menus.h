@@ -24,8 +24,9 @@ namespace chat_utility{
         int& pressed;
         bool& key_event_running;
         size_t& max;
-        key_pram(Terminal const& t, int& selected, int& pressed, bool &key_event_running, size_t& max):
-            t(t),selected(selected),pressed(pressed),key_event_running(key_event_running),max(max){}
+        int& key;
+        key_pram(Terminal const& t, int& selected, int& pressed, int& key, bool &key_event_running, size_t& max):
+            t(t),selected(selected),pressed(pressed),key_event_running(key_event_running),max(max),key(key){}
     };
 
     bool key_event(Terminal const& t, int& selected, int& pressed, size_t max) noexcept{
@@ -58,9 +59,9 @@ namespace chat_utility{
     }
 
     bool key_event_async(key_pram& kp) noexcept{
-
         while(kp.key_event_running){
-            switch(kp.t.keyEvent()){
+            auto key = kp.t.keyEvent();
+            switch(key){
                 case 'q':
                     write(1, "\x1b[2J", 4);
                     write(1, "\x1b[H", 3);
@@ -177,8 +178,8 @@ namespace chat_utility{
                 return el1 == el2;
             });
         };
-        
-        key_pram kp(t,selected,pressed,key_event_running,size);
+        int key_pressed{-1};
+        key_pram kp(t,selected,pressed, key_pressed,key_event_running,size);
         std::thread key_t(key_event_async, std::ref(kp));
 
         auto temp_map = sc.get_user_list(); 
@@ -199,9 +200,13 @@ namespace chat_utility{
                     auto user = std::get<1>(parse_user(mess));
                     std::string str = user + " asking for permission. Press Y or N\r\n";
                     t.wprint(str);
-                    auto check = true;
-                    while(check){
-                        
+                    while(key_pressed != 'y' && key_pressed != 'n' && 
+                        key_pressed != 'Y' && key_pressed != 'N'){
+                    };
+                    for(auto const& [key,val] : temp_map){
+                        if(val == user){
+                            return static_cast<int>(key);
+                        }
                     }
                     break;
                 }
@@ -213,8 +218,6 @@ namespace chat_utility{
                 }
             }
         }
-        key_event_running = false;
-        key_t.join();
         return pressed;
     }
 
