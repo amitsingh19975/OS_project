@@ -28,20 +28,20 @@ namespace chat_utility{
     
     auto commands_to_string(COMMANDS c){
         switch (c){
-        case COMMANDS::SYNC:
-            return std::string("sync");
-        case COMMANDS::USER:
-            return std::string("user");
-        case COMMANDS::PERMISSION:
-            return std::string("perm");
-        case COMMANDS::YES:
-            return std::string("y");
-        case COMMANDS::NO:
-            return std::string("n");
-        case COMMANDS::EXIT:
-            return std::string("exit");
-        default:
-            return std::string("none");
+            case COMMANDS::SYNC:
+                return std::string("sync");
+            case COMMANDS::USER:
+                return std::string("user");
+            case COMMANDS::PERMISSION:
+                return std::string("perm");
+            case COMMANDS::YES:
+                return std::string("y");
+            case COMMANDS::NO:
+                return std::string("n");
+            case COMMANDS::EXIT:
+                return std::string("exit");
+            default:
+                return std::string("none");
         }
     }
     

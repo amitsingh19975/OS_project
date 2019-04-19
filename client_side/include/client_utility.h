@@ -144,21 +144,26 @@ namespace chat_utility{
         m_conn_to = m_list.at(idx);
         m_conn_to = trim(m_conn_to);
         size_t len = sprintf(payload,"%s",m_conn_to.c_str());
+        
         write(m_fd,payload,len);
-
-        // auto cmd = std::get<0>(parse_message(payload));
-
-        // if( cmd == COMMANDS::PERMISSION ){
-        //     COMMANDS key = COMMANDS::NONE;
-        //     while( key != COMMANDS::YES || key != COMMANDS::NO){
-        //         key = static_cast<char>(m_ter.keyEvent());
-        //         if(key >= 'A' || key <= 'Z'){
-        //             key += ' ';
-        //         }
-        //     }
-        //     sprintf(buff,"/%s %c",commands_to_string(cmd).c_str(),key);
-        // }
-
+        
+        m_ter.wprint("Waiting for permission! Please wait...");
+        
+        read(m_fd,buff,MAX_BYTE);
+        
+        auto const [cmd, res] = parse_message(buff);
+        if(cmd == COMMANDS::PERMISSION){
+            if(res == "DENIED"){
+                m_ter.eprint("Permission Denied");
+                return 1;
+            }else if(res == "ACCEPTED"){
+                m_ter.sprint("Permission Accepted");
+                return 0;
+            }else{
+                m_ter.eprint(res);
+                return 1;
+            }
+        }
         return 0;
     }
 
