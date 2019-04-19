@@ -188,7 +188,7 @@ namespace chat_utility{
 
         while(pressed == -1){
             char buff[2048] = {0};
-            if(selected != prev || !comp_map(temp_map,sc.get_user_list()) || refresh){
+            if(selected != prev  || refresh){
                 user_menu_helper(t,sc.get_user_list(),selected);
                 prev = selected;
                 temp_map = sc.get_user_list();
@@ -197,35 +197,55 @@ namespace chat_utility{
             }
             auto len = recv(sc.fd(),buff,2048,MSG_DONTWAIT);
             if(len > 0){
-                auto [cmd,mess] = parse_message(buff);
-                switch (cmd){
-                    case COMMANDS::PERMISSION:{
-                        auto user = std::get<1>(parse_user(mess));
-                        std::string str = user + " asking for permission. Press Y or N\r\n";
-                        t.wprint(str);
-                        auto key_press = key_pressed;
-                        while(key_press != 'y' && key_press != 'n' && 
-                            key_press != 'Y' && key_press != 'N'){
-                                key_press = key_pressed;
-                        };
-                        memset(buff,0,MAX_BYTE);
-                        len = sprintf(buff,"/perm %c",static_cast<char>(key_press));
-                        write(sc.fd(),buff,len);
-                        if(key_press == 'y' || key_press == 'Y') {
-                            key_event_running = false;
-                            key_t.join();
-                            return {COMMANDS::PERMISSION,0};
-                        }
-                        refresh = true;
-                        continue;
-                        break;
+                refresh = true;
+                auto cmd = parse_commands(buff);
+                
+                if(cmd.find(COMMANDS::EXIT) != cmd.end()){
+                    t.eprint("EXIT");
+                    sc.close_con();
+                    return {COMMANDS::NONE,-1};
+                }else if(auto it = cmd.find(COMMANDS::SVR_ERR); it != cmd.end()){
+                    t.eprint(it->second[0]);
+                    sc.close_con();
+                    return {COMMANDS::NONE,-1};
+                }else if(auto it = cmd.find(COMMANDS::SVR_WRN); it != cmd.end()){
+                    t.wprint(it->second[0]);
+                    sc.close_con();
+                    return {COMMANDS::NONE,-1};
+                }
+                
+                if(auto it = cmd.find(COMMANDS::PERMISSION); it != cmd.end()){
+                    auto user = cmd.find(COMMANDS::USER);
+                    if(user == cmd.end()){
+                        std::string str = "/exit";
+                        write(sc.fd(),str.c_str(),str.size());
+                        t.eprint("Unable to parse user\n");
+                        sc.close_con();
                     }
-                    case COMMANDS::SYNC:
-                        sc.waiting_room(buff,10);
-                        break;
-                    default:
-                        break;
+                    std::string str = user->second[0] + " asking for permission. Press Y or N\r\n";
+                    t.wprint(str);
+                    
+                    auto key_press = key_pressed;
+                    while(key_press != 'y' && key_press != 'n' && 
+                        key_press != 'Y' && key_press != 'N'){
+                            key_press = key_pressed;
+                    };
+                    
+                    memset(buff,0,MAX_BYTE);
+                    len = sprintf(buff,"/perm %c",static_cast<char>(key_press));
+                    write(sc.fd(),buff,len);
+
+                    if(key_press == 'y' || key_press == 'Y') {
+                        key_event_running = false;
+                        key_t.join();
+                        return {COMMANDS::PERMISSION,0};
                     }
+                    continue;
+                }
+
+                if(auto it = cmd.find(COMMANDS::SYNC); it != cmd.end()){
+                    sc.set_map(it->second);
+                }
             }
         }
         key_event_running = false;

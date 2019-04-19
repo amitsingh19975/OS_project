@@ -30,8 +30,8 @@ int main(int argv, char** argc){
     Terminal t;
     User user;
     uint32_t user_idx;        
-    SocketConnection s(t);
-    COMMANDS cmd{COMMANDS::NONE};        
+    SocketConnection s(t);      
+    COMMANDS cmd{COMMANDS::NONE};  
     int selected        =   MAIN;
     bool is_running     =   true;
     int max_scroll      =   0;
@@ -47,8 +47,19 @@ int main(int argv, char** argc){
     // };
     auto user_list = s.get_user_list();
     padding_map(user_list);
-    t.init();
+    // auto com = parse_commands("/svr_err Hello hi user /user admin");
 
+    // for(auto const& [key, val] : com){
+    //     cout<<to_string(key)<<": ";
+    //     for(auto const& arg : val){
+    //         std::cout<<arg<<',';
+    //     }
+    //     cout<<"\r\n";
+    // }
+
+    // DEBUG_E('\n');
+    
+    t.init();
     while(is_running){
         t.clearScreen();
         switch(selected){
@@ -68,7 +79,7 @@ int main(int argv, char** argc){
                     selected = MAIN;
                     t.eprint("No User Found!");
                     wait(t);
-                }
+                };
                 user_idx = idx;
                 cmd = c;
                 selected = CHAT;
@@ -95,6 +106,7 @@ int main(int argv, char** argc){
                     wait(t);
                     s.close_con();
                 }
+                sleep(1);
                 t.clearScreen();
                 disable();
                 chat_menu(t,s);

@@ -94,12 +94,15 @@ namespace chat_utility{
         auto send() noexcept;
         auto recv() noexcept -> int;
         auto login() noexcept;
-        auto conn_to(COMMANDS cmd, uint32_t) noexcept;
         auto close_con() noexcept;
-        int waiting_room(std::string_view, size_t) noexcept;
         auto fd() const noexcept;
+        ~SocketConnection() noexcept;
+        auto conn_to(COMMANDS cmd, uint32_t) noexcept;
+        void set_map(std::vector<std::string> const&) noexcept;
+        int waiting_room(std::string_view, size_t) noexcept;
         [[nodiscard]] constexpr auto get_user_list() const noexcept
             ->std::map<uint32_t,std::string> const&;
+        
 
     private:
         void set_users(std::string_view) noexcept;
@@ -124,6 +127,12 @@ namespace chat_utility{
         terminal::disable();
         close(m_fd);
         exit(1); 
+    }
+
+    SocketConnection::~SocketConnection() noexcept{
+        terminal::disable();
+        close(m_fd);
+        exit(0);
     }
 
     auto SocketConnection::conn() noexcept{
@@ -156,9 +165,14 @@ namespace chat_utility{
             
             m_ter.wprint("Waiting for permission! Please wait...");
             read(m_fd,buff,MAX_BYTE);
-            
-            auto [c, res] = parse_message(buff);
-            if(c == COMMANDS::PERMISSION){
+            auto cmd = parse_commands(payload);
+
+            if(cmd.find(COMMANDS::EXIT) != cmd.end()){
+                m_ter.eprint("EXIT");
+                return 1;
+            }
+            if(auto it = cmd.find(COMMANDS::PERMISSION); it != cmd.end()){
+                auto res = it->second[0];
                 if(res == "DENIED"){
                     m_ter.eprint("Permission Denied");
                     return 1;
@@ -170,6 +184,14 @@ namespace chat_utility{
                     return 1;
                 }
             }
+            if(auto it = cmd.find(COMMANDS::SVR_ERR); it != cmd.end()){
+                m_ter.eprint(it->second[0]);
+                return 1;
+            }else if(auto it = cmd.find(COMMANDS::SVR_WRN); it != cmd.end()){
+                m_ter.wprint(it->second[0]);
+                return 0;
+            }
+
         }
         return 0;
     }
@@ -216,37 +238,41 @@ namespace chat_utility{
     }
 
     void SocketConnection::set_users_str(std::string_view str) noexcept{
-        std::string temp(str);
-        std::stringstream ss(temp);
-        std::string s;
-        m_list.clear();
-        int i = 0;
-        int j = 0;
-
-        while(std::getline(ss,s,' ')){
-            if(i++ < 2) continue;
-            m_list[j++] = s;
+        auto cmd = parse_commands(str);
+        if(auto it = cmd.find(COMMANDS::SYNC); it == cmd.end()){
+            std::string str = "/exit";
+            write(m_fd,str.c_str(),str.size());
+            m_ter.eprint("Unable to parse sync\n");
+            close_con();
+        }else{
+            set_map(it->second);
         }
-
-        padding_map(m_list);
     }
 
     int SocketConnection::waiting_room(std::string_view str, size_t size) noexcept{
-
         if(size != 0) set_users_str(str);
 
         char buff[MAX_BYTE];
 
         while(size == 0){
+            auto cmd = parse_commands(buff);
             if((read(m_fd,buff, MAX_BYTE) == -1) 
-                && !is_command(buff) 
-                && std::get<0>(parse_message(buff)) != COMMANDS::SYNC){
+                && !is_command(buff)){
                 m_ter.eprint("Internal Server Error");
                 close_con();
             }
 
-            if(std::get<0>(parse_message(str)) == COMMANDS::EXIT){
+            if(cmd.find(COMMANDS::EXIT) != cmd.end()){
+                m_ter.eprint("EXIT");
                 return 1;
+            }
+
+            if(auto it = cmd.find(COMMANDS::SVR_ERR); it != cmd.end()){
+                m_ter.eprint(it->second[0]);
+                return 1;
+            }else if(auto it = cmd.find(COMMANDS::SVR_WRN); it != cmd.end()){
+                m_ter.wprint(it->second[0]);
+                return 0;
             }
 
             set_users_str(buff);
@@ -287,21 +313,21 @@ namespace chat_utility{
             if(strlen(payload) == 0) continue;
 
             str = "/user " + m_user.get_user() + " " + std::string(payload);
+            auto cmd = parse_commands(payload);
 
-            switch(std::get<0>(parse_message(payload))){
-                case COMMANDS::EXIT : {
-                    write(m_fd, str.c_str(), MAX_BYTE);
-                    str = format<Bit_3_4<FG::RED>,TF::BOLD>("Successfully left the Chat Room!\r\n");
-                    write(1,str.c_str(),str.size());
-                    m_connected = false;
-                    return 2;
-                }
-                case COMMANDS::SYNC : {
-                    waiting_room(payload,10);
-                    continue;
-                }
-                default: break;
+            if(cmd.find(COMMANDS::EXIT) != cmd.end()){
+                write(m_fd, str.c_str(), MAX_BYTE);
+                str = format<Bit_3_4<FG::RED>,TF::BOLD>("Successfully left the Chat Room!\r\n");
+                write(1,str.c_str(),str.size());
+                str = "/exit";
+                write(m_fd,str.c_str(),str.size());
+                m_connected = false;
+                return 2;
+            }else if(cmd.find(COMMANDS::SYNC) != cmd.end()){
+                waiting_room(payload,10);
+                continue;
             }
+
             write(m_fd, str.c_str(), MAX_BYTE);
         }
         return 0;
@@ -328,22 +354,22 @@ namespace chat_utility{
 
             str = format<Bit_3_4<FG::MAGENTA>,TF::BOLD>(user) + " : " + temp + "\n";
 
-            if(std::get<0>(parse_message(payload)) != COMMANDS::USER){
+            auto cmd = parse_commands(payload);
+
+            if(cmd.find(COMMANDS::EXIT) != cmd.end()){
+                m_connected = false;
+                str = format<Bit_3_4<FG::RED>,TF::BOLD>("Everyone has left the Chat Room!\r\n");
+                write(1,str.c_str(),str.size());
+                return 2;
+            }
+
+            if(cmd.find(COMMANDS::USER) != cmd.end()){
                 temp = payload;
             }
 
-            switch(std::get<0>(parse_message(temp))){
-                case COMMANDS::EXIT : {
-                    m_connected = false;
-                    str = format<Bit_3_4<FG::RED>,TF::BOLD>("Everyone has left the Chat Room!\r\n");
-                    write(1,str.c_str(),str.size());
-                    return 2;
-                }
-                case COMMANDS::SYNC : {
-                    waiting_room(payload,10);
-                    continue;
-                }
-                default: break;
+            if(cmd.find(COMMANDS::SYNC) != cmd.end()){
+                waiting_room(payload,10);
+                continue;
             }
             
             if(str.size() != 0){
@@ -351,6 +377,14 @@ namespace chat_utility{
             }
         }
         return 0;
+    }
+
+    void SocketConnection::set_map(std::vector<std::string> const& users) noexcept{
+        m_list.clear();
+        for(auto i = 0; i < users.size() - 1; i++){
+                m_list[i] = users[i + 1];
+        }
+        padding_map(m_list);
     }
 
 }
