@@ -206,7 +206,7 @@ void *client_process_init(void *param)
             // TODO: Check if user is online
             char permission[MAX_MSG] = "/perm /user ";
             strcat(permission, users[other_index].username);
-            printf("Permission message: %s\n");
+            printf("Permission message: %s\n", permission);
             send(users[other_index].connection, permission, MAX_MSG, 0);
             memset(permission, 0, MAX_MSG);
             // Check if a permission was alread made
