@@ -143,7 +143,7 @@ namespace chat_utility{
         char what[MAX_BYTE - 10] = {0};
         m_conn_to = m_list.at(idx);
         m_conn_to = trim(m_conn_to);
-        size_t len = sprintf(payload,"/perm /user %s %s",m_user.get_user().c_str(),m_conn_to.c_str());
+        size_t len = sprintf(payload,"%s",m_conn_to.c_str());
         
         write(m_fd,payload,len);
         
