@@ -164,7 +164,7 @@ void *client_process_init(void *param)
             char perm_cpy[100] = {0};
             strcpy(perm_cpy, user_to);
             perm_cpy[5] = 0;
-            printf("User To value for %s: %s: ", users[index].username, user_to);
+            printf("User To value for %s: %s\n", users[index].username, user_to);
             if (!strcmp(perm_cpy, "/perm")) {
                 // Wait for connection request to be made by other thread
                 while (users[index].perm[0] == -1);
@@ -209,6 +209,7 @@ void *client_process_init(void *param)
         }
         else
         {
+            printf("User To value for %s: %s\n", users[index].username, user_to);
             int other_index = search_user(user_to);
             // TODO: Check if user is online
             char permission[MAX_MSG] = "/perm /user ";
