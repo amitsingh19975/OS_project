@@ -33,7 +33,7 @@ void graceful_exit(void)
 
 int main(int argc, char const *argv[])
 {
-    atexit(graceful_exit);
+    // atexit(graceful_exit);
     // Initialize server and inits the server_fd value
     if (server_init())
     {
@@ -49,7 +49,6 @@ int server_init()
     int server_fd;
     // online_users = 0;
     struct sockaddr_in address;
-    int opt = 1;
     int addrlen = sizeof(address);
     // Create a socket connection
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
@@ -57,12 +56,6 @@ int server_init()
         perror("Socket failed");
         return 1;
     }
-
-    // if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
-    // {
-    //     perror("setsockopt");
-    //     exit(EXIT_FAILURE);
-    // }
 
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
@@ -101,13 +94,15 @@ int server_init()
             perror("Error accepting connection");
             return 1;
         }
-        // Create a child proccess to chech if the connection is closed or not
+        // thread to initialize client
         pthread_attr_init(&client_thread_attr[con_count]);
         pthread_create(&client_conns[con_count], &client_thread_attr[con_count], client_process_init, (void *)&in_connection);
         con_count++;
         printf("Number of connections %d \n", con_count);
     }
     // Closing server
+    puts("Closing server");
+    printf("Con_count value: %d\n", con_count);
     for (size_t j = 0; j < con_count; j++)
     {
         pthread_attr_destroy(&client_thread_attr[j]);
@@ -128,6 +123,7 @@ void *client_process_init(void *param)
     {
         // If connection drops before authentication
         con_count--;
+        eprint("Error while reading first Contact on connection %d", connection);
         close(connection);
         pthread_exit(NULL);
     }
@@ -152,24 +148,28 @@ void *client_process_init(void *param)
         char user_to[100] = {0};
         if (read(connection, user_to, 100) < 0)
         {
+            eprint("Error while reading user to from %s\n", users[index].username);
             pthread_mutex_lock(&users[index].mu);
             close_connection(index);
             pthread_mutex_unlock(&users[index].mu);
             pthread_exit(NULL);
         }
-        else if (user_to[0] == '/') {
+        else if (user_to[0] == '/')
+        {
             // If it is on receiving end of permission then
             // user_to will be a /perm y or n
             // If permission is n then send
             char perm_cpy[100] = {0};
             strcpy(perm_cpy, user_to);
             perm_cpy[5] = 0;
-            printf("User To value for %s: %s\n", users[index].username, user_to);
-            if (!strcmp(perm_cpy, "/perm")) {
+            if (!strcmp(perm_cpy, "/perm"))
+            {
                 // Wait for connection request to be made by other thread
-                while (users[index].perm[0] == -1);
+                while (users[index].perm[0] == -1)
+                    ;
                 // Check if the user response is y or n
-                if (user_to[6] == 'y') {
+                if (user_to[6] == 'y')
+                {
                     // Response is yes set permission to 1
                     printf("User %s granting permission\n", users[index].username);
                     users[index].perm[1] = 1;
@@ -177,19 +177,20 @@ void *client_process_init(void *param)
                     online_users--;
                     users[index].status = CHATTING;
                     users[index].recv_len++;
-                    users[index].recv_con_index[users[index].recv_len-1] = users[index].perm[0];
+                    users[index].recv_con_index[users[index].recv_len - 1] = users[index].perm[0];
                     users[index].send_len++;
-                    users[index].send_con_index[users[index].send_len-1] = users[index].perm[0];
+                    users[index].send_con_index[users[index].send_len - 1] = users[index].perm[0];
                     broadcast_to_online();
-                    // TODO: Create a thread to chat
                     pthread_create(&tid_chat, NULL, client_process_chat, (void *)&index);
                     pthread_join(tid_chat, NULL);
-                    printf("%s Exiting chat thread", users[index].username);
+                    printf("%s Exiting chat thread\n", users[index].username);
                     pthread_mutex_lock(&users[index].mu);
                     close_connection(index);
                     pthread_mutex_unlock(&users[index].mu);
                     pthread_exit(NULL);
-                } else {
+                }
+                else
+                {
                     // Response is no, set permission to 0
                     users[index].perm[1] = 0;
                     // Close connection and exit
@@ -198,10 +199,13 @@ void *client_process_init(void *param)
                     pthread_mutex_unlock(&users[index].mu);
                     pthread_exit(NULL);
                 }
-
-            } else {
+            }
+            else
+            {
                 // Wrong requset send close connection
+
                 pthread_mutex_lock(&users[index].mu);
+                eprint("Wrong request send");
                 close_connection(index);
                 pthread_mutex_unlock(&users[index].mu);
                 pthread_exit(NULL);
@@ -209,42 +213,48 @@ void *client_process_init(void *param)
         }
         else
         {
-            printf("User To value for %s: %s\n", users[index].username, user_to);
             int other_index = search_user(user_to);
             // TODO: Check if user is online
-            char permission[MAX_MSG] = "/perm /user ";
-            strcat(permission, users[other_index].username);
-            printf("Permission message: %s\n", permission);
-            send(users[other_index].connection, permission, MAX_MSG, 0);
-            memset(permission, 0, MAX_MSG);
-            // Check if a permission was alread made
-            if (users[other_index].perm[0] == -1) {
+            if (users[other_index].perm[0] == -1)
+            {
+                char permission[MAX_MSG] = "/perm /user ";
+                strcat(permission, users[other_index].username);
+                printf("%s sending permission message: %s to %s\n", users[index].username, permission, users[other_index].username);
+                send(users[other_index].connection, permission, MAX_MSG, 0);
+                memset(permission, 0, MAX_MSG);
+                // Check if a permission was alread made
+
                 // Make a request for permission by setting the perm[0] to the current index
                 users[other_index].perm[0] = index;
                 // Wait for the permission to be accepted
-                while (users[other_index].perm[1] == -1);
-                if (users[other_index].perm[1] == 1) {
+                while (users[other_index].perm[1] == -1)
+                    ;
+                if (users[other_index].perm[1] == 1)
+                {
                     // Request accepted proceed to create a connection
+                    printf("%s's request accepted by %s\n", users[index].username, users[other_index].username);
                     online_users--;
                     users[index].status = CHATTING;
                     users[index].recv_len++;
-                    users[index].recv_con_index[users[index].recv_len-1] = other_index;
+                    users[index].recv_con_index[users[index].recv_len - 1] = other_index;
                     users[index].send_len++;
-                    users[index].send_con_index[users[index].send_len-1] = other_index;
+                    users[index].send_con_index[users[index].send_len - 1] = other_index;
                     broadcast_to_online();
                     // Send accepted to client so that it can proceed to chat room
                     sprintf(permission, "%s", "/perm ACCEPTED");
                     send(users[index].connection, permission, MAX_MSG, 0);
-                    // TODO: Create a thread to chat
                     pthread_create(&tid_chat, NULL, client_process_chat, (void *)&index);
                     pthread_join(tid_chat, NULL);
-                    printf("%s Exiting chat thread", users[index].username);
+                    printf("%s Exiting chat thread\n", users[index].username);
                     pthread_mutex_lock(&users[index].mu);
                     close_connection(index);
                     pthread_mutex_unlock(&users[index].mu);
                     pthread_exit(NULL);
-                } else {
+                }
+                else
+                {
                     // Request denied send request denined and close the connection
+                    printf("%s's request denied by %s\n", users[index].username, users[other_index].username);
                     sprintf(permission, "%s", "/perm DENIED");
                     send(users[index].connection, permission, MAX_MSG, 0);
                     pthread_mutex_lock(&users[index].mu);
@@ -252,11 +262,12 @@ void *client_process_init(void *param)
                     pthread_mutex_unlock(&users[index].mu);
                     pthread_exit(NULL);
                 }
-            } else {
-                // Requested user already got a request send permission denied and close connection
-                sprintf(permission, "%s", "/perm DENIED");
-                send(users[index].connection, permission, MAX_MSG, 0);
+            }
+            else
+            {
+                // Requested user already got a request
                 pthread_mutex_lock(&users[index].mu);
+                eprint("Request was made to an occupied user by %s", users[index].username);
                 close_connection(index);
                 pthread_mutex_unlock(&users[index].mu);
                 pthread_exit(NULL);
@@ -283,36 +294,31 @@ void *client_process_init(void *param)
 
 void *client_process_chat(void *param)
 {
-    // FIXME: if other user drops the connection this user continues to read message
-    // Drop this connection too if the other connections drops abruptly
     int index = *(int *)param;
-    int to = users[index].send_con_index[users[index].send_len-1];
+    int to = users[index].send_con_index[users[index].send_len - 1];
     char message[MAX_MSG];
     // If connection to either User drops then send /exit command to the other
     // Connected user so that he can go to menu screen.
     while (users[to].status == CHATTING)
     {
         int len = read(users[index].connection, message, 2048);
-        if (len < 0)
+        if (len <= 0)
         {
             // If the this connection drops then exit thread
+            close_connection(to);
             pthread_exit(NULL);
         }
         else
         {
-            // See If it is an exit command
-            if (message[0] == '/')
+            char ext_msg[2048];
+            strcpy(ext_msg, message);
+            ext_msg[5] = 0;
+            if (!strcmp(ext_msg, "/exit"))
             {
-                char ext_msg[2048];
-                strcpy(ext_msg, message);
-                ext_msg[5] = 0;
-                if (!strcmp(ext_msg, "/exit"))
-                {
-                    printf("Exit requested by %s\n", users[index].username);
-                    // Close both the connection
-                    close_connection(to);
-                    pthread_exit(NULL);
-                }
+                printf("Exit requested by %s\n", users[index].username);
+                // Close both the connection
+                close_connection(to);
+                pthread_exit(NULL);
             }
             write(users[to].connection, message, 2048);
         }
@@ -328,7 +334,6 @@ void send_exit_message(int connection)
 
 void broadcast_to_online()
 {
-    puts("Broadcasting to online users");
     char payload[1024] = {0};
     int i, count = 0;
     char buffer[1010] = {0};
@@ -336,8 +341,10 @@ void broadcast_to_online()
     {
         if (users[i].status == ONLINE)
         {
+            printf("Broadcasting to %s\n", users[i].username);
             count = cat_online_user(buffer, i);
             sprintf(payload, "/sync %d %s", count, buffer);
+            printf("Payload: %s\n", payload);
             write(users[i].connection, payload, 1024);
             memset(buffer, 0, 1010);
             memset(payload, 0, 1024);
@@ -587,6 +594,5 @@ void user_reset(int index)
         users[index].send_len = 0;
         users[index].perm[0] = -1;
         users[index].perm[1] = -1;
-
     }
 }
