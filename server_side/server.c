@@ -119,7 +119,7 @@ int server_init()
 void *client_process_init(void *param)
 {
     int connection = *(int *)param;
-    pthread_t tid_recv;
+    pthread_t tid_chat;
     char first_contact[2048] = {0};
     char username[MAX_LEN] = {0};
     char password[MAX_LEN] = {0};
@@ -164,12 +164,14 @@ void *client_process_init(void *param)
             char perm_cpy[100] = {0};
             strcpy(perm_cpy, user_to);
             perm_cpy[5] = 0;
+            printf("User To value for %s: %s: ", users[index].username, user_to);
             if (!strcmp(perm_cpy, "/perm")) {
                 // Wait for connection request to be made by other thread
                 while (users[index].perm[0] == -1);
                 // Check if the user response is y or n
                 if (user_to[6] == 'y') {
                     // Response is yes set permission to 1
+                    printf("User %s granting permission\n", users[index].username);
                     users[index].perm[1] = 1;
                     // Create connection with user that is requesting permission
                     online_users--;
@@ -180,8 +182,13 @@ void *client_process_init(void *param)
                     users[index].send_con_index[users[index].send_len-1] = users[index].perm[0];
                     broadcast_to_online();
                     // TODO: Create a thread to chat
-                    
-
+                    pthread_create(&tid_chat, NULL, client_process_chat, (void *)&index);
+                    pthread_join(tid_chat, NULL);
+                    printf("%s Exiting chat thread", users[index].username);
+                    pthread_mutex_lock(&users[index].mu);
+                    close_connection(index);
+                    pthread_mutex_unlock(&users[index].mu);
+                    pthread_exit(NULL);
                 } else {
                     // Response is no, set permission to 0
                     users[index].perm[1] = 0;
@@ -228,8 +235,13 @@ void *client_process_init(void *param)
                     sprintf(permission, "%s", "/perm ACCEPTED");
                     send(users[index].connection, permission, MAX_MSG, 0);
                     // TODO: Create a thread to chat
-
-
+                    pthread_create(&tid_chat, NULL, client_process_chat, (void *)&index);
+                    pthread_join(tid_chat, NULL);
+                    printf("%s Exiting chat thread", users[index].username);
+                    pthread_mutex_lock(&users[index].mu);
+                    close_connection(index);
+                    pthread_mutex_unlock(&users[index].mu);
+                    pthread_exit(NULL);
                 } else {
                     // Request denied send request denined and close the connection
                     sprintf(permission, "%s", "/perm DENIED");
