@@ -78,7 +78,8 @@ namespace chat_utility{
                     kp.selected = 0;
                     return false;
                 }
-                case ']':
+                case 'y':
+                case 'Y':
                     return true;
                 default:
                     break;  
@@ -202,16 +203,16 @@ namespace chat_utility{
                         auto user = std::get<1>(parse_user(mess));
                         std::string str = user + " asking for permission. Press Y or N\r\n";
                         t.wprint(str);
-                        while(key_pressed != 'y' && key_pressed != 'n' && 
-                            key_pressed != 'Y' && key_pressed != 'N'){
-                        };
                         auto key_press = key_pressed;
+                        while(key_press != 'y' && key_press != 'n' && 
+                            key_press != 'Y' && key_press != 'N'){
+                                key_press = key_pressed;
+                        };
                         memset(buff,0,MAX_BYTE);
                         len = sprintf(buff,"/perm %c",static_cast<char>(key_press));
                         write(sc.fd(),buff,len);
                         if(key_press == 'y' || key_press == 'Y') {
                             key_event_running = false;
-                            write(0,"x234",4);
                             key_t.join();
                             return {COMMANDS::PERMISSION,0};
                         }
