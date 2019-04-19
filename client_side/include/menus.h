@@ -160,7 +160,7 @@ namespace chat_utility{
         }
     }
 
-    auto user_menu(terminal::Terminal& t, SocketConnection& sc){
+    int user_menu(terminal::Terminal& t, SocketConnection& sc){
         int selected = 0;
         int pressed = -1;
         bool valid = false;
@@ -196,31 +196,35 @@ namespace chat_utility{
             if(len > 0){
                 auto [cmd,mess] = parse_message(buff);
                 switch (cmd){
-                case COMMANDS::PERMISSION:{
-                    auto user = std::get<1>(parse_user(mess));
-                    std::string str = user + " asking for permission. Press Y or N\r\n";
-                    t.wprint(str);
-                    while(key_pressed != 'y' && key_pressed != 'n' && 
-                        key_pressed != 'Y' && key_pressed != 'N'){
-                    };
-                    memset(buff,0,MAX_BYTE);
-                    sprintf(buff,"/perm %c /user %s",static_cast<char>(key_pressed),user.c_str());
-                    write(sc.fd(),buff,MAX_BYTE);
-                    for(auto const& [key,val] : temp_map){
-                        if(val == user){
-                            return static_cast<int>(key);
+                    case COMMANDS::PERMISSION:{
+                        auto user = std::get<1>(parse_user(mess));
+                        std::string str = user + " asking for permission. Press Y or N\r\n";
+                        t.wprint(str);
+                        while(key_pressed != 'y' && key_pressed != 'n' && 
+                            key_pressed != 'Y' && key_pressed != 'N'){
+                        };
+                        memset(buff,0,MAX_BYTE);
+                        sprintf(buff,"/perm %c /user %s",static_cast<char>(key_pressed),user.c_str());
+                        write(sc.fd(),buff,MAX_BYTE);
+                        for(auto const& [key,val] : temp_map){
+                            if(val == user){
+                                key_event_running = false;
+                                key_t.join();
+                                return static_cast<int>(key);
+                            }
                         }
+                        break;
                     }
-                    break;
-                }
-                case COMMANDS::SYNC:
-                    sc.waiting_room(buff,10);
-                    break;
-                default:
-                    break;
-                }
+                    case COMMANDS::SYNC:
+                        sc.waiting_room(buff,10);
+                        break;
+                    default:
+                        break;
+                    }
             }
         }
+        key_event_running = false;
+        key_t.join();
         return pressed;
     }
 

@@ -148,10 +148,9 @@ namespace chat_utility{
         write(m_fd,payload,len);
         
         m_ter.wprint("Waiting for permission! Please wait...");
-        
         read(m_fd,buff,MAX_BYTE);
         
-        auto const [cmd, res] = parse_message(buff);
+        auto [cmd, res] = parse_message(buff);
         if(cmd == COMMANDS::PERMISSION){
             if(res == "DENIED"){
                 m_ter.eprint("Permission Denied");
