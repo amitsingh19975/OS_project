@@ -203,6 +203,9 @@ namespace chat_utility{
                     while(key_pressed != 'y' && key_pressed != 'n' && 
                         key_pressed != 'Y' && key_pressed != 'N'){
                     };
+                    memset(buff,0,MAX_BYTE);
+                    sprintf(buff,"/perm %c /user %s",static_cast<char>(key_pressed),user.c_str());
+                    write(sc.fd(),buff,MAX_BYTE);
                     for(auto const& [key,val] : temp_map){
                         if(val == user){
                             return static_cast<int>(key);
