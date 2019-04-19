@@ -60,8 +60,8 @@ namespace chat_utility{
 
     bool key_event_async(key_pram& kp) noexcept{
         while(kp.key_event_running){
-            auto key = kp.t.keyEvent();
-            switch(key){
+            kp.key = kp.t.keyEvent();
+            switch(kp.key){
                 case 'q':
                     write(1, "\x1b[2J", 4);
                     write(1, "\x1b[H", 3);
@@ -78,6 +78,8 @@ namespace chat_utility{
                     kp.selected = 0;
                     return false;
                 }
+                case ']':
+                    return true;
                 default:
                     break;  
             }
@@ -148,7 +150,6 @@ namespace chat_utility{
     }
     
     auto chat_menu(terminal::Terminal& t, SocketConnection& sc){
-        
         std::future<int> s = std::async(std::launch::async,&SocketConnection::send,&sc);
         std::future<int> r = std::async(std::launch::async,&SocketConnection::recv,&sc);
 
@@ -160,17 +161,17 @@ namespace chat_utility{
         }
     }
 
-    int user_menu(terminal::Terminal& t, SocketConnection& sc){
+    std::pair<COMMANDS,int> user_menu(terminal::Terminal& t, SocketConnection& sc){
         int selected = 0;
         int pressed = -1;
-        bool valid = false;
+        bool refresh = false;
         auto prev = -1;
         size_t size{0};
         size_t prev_size{0};
         bool key_event_running{true};
         
         if(!sc.get_user_list().size()){
-            return 1;
+            return {COMMANDS::NONE,1};
         }
 
         auto comp_map = [](auto const& m1, auto const& m2) -> bool{
@@ -186,11 +187,12 @@ namespace chat_utility{
 
         while(pressed == -1){
             char buff[2048] = {0};
-            if(selected != prev || !comp_map(temp_map,sc.get_user_list())){
+            if(selected != prev || !comp_map(temp_map,sc.get_user_list()) || refresh){
                 user_menu_helper(t,sc.get_user_list(),selected);
                 prev = selected;
                 temp_map = sc.get_user_list();
                 size = temp_map.size();
+                refresh = false;
             }
             auto len = recv(sc.fd(),buff,2048,MSG_DONTWAIT);
             if(len > 0){
@@ -203,16 +205,18 @@ namespace chat_utility{
                         while(key_pressed != 'y' && key_pressed != 'n' && 
                             key_pressed != 'Y' && key_pressed != 'N'){
                         };
+                        auto key_press = key_pressed;
                         memset(buff,0,MAX_BYTE);
-                        sprintf(buff,"/perm %c",static_cast<char>(key_pressed));
-                        write(sc.fd(),buff,MAX_BYTE);
-                        for(auto const& [key,val] : temp_map){
-                            if(val == user){
-                                key_event_running = false;
-                                key_t.join();
-                                return static_cast<int>(key);
-                            }
+                        len = sprintf(buff,"/perm %c",static_cast<char>(key_press));
+                        write(sc.fd(),buff,len);
+                        if(key_press == 'y' || key_press == 'Y') {
+                            key_event_running = false;
+                            write(0,"x234",4);
+                            key_t.join();
+                            return {COMMANDS::PERMISSION,0};
                         }
+                        refresh = true;
+                        continue;
                         break;
                     }
                     case COMMANDS::SYNC:
@@ -225,7 +229,7 @@ namespace chat_utility{
         }
         key_event_running = false;
         key_t.join();
-        return pressed;
+        return {COMMANDS::NONE,pressed};
     }
 
     auto main_menu(terminal::Terminal& t, std::vector<std::string>& list){

@@ -25,6 +25,12 @@
 
 #define MAX_BYTE 2048
 
+#define DEBUG_E(x) terminal::disable();\
+    std::cout<<x<<'\n';\
+    exit(0);
+#define DEBUG(x) terminal::disable();\
+    std::cout<<x<<'\n';
+
 namespace chat_utility{
 
     struct SocketConnection;
@@ -88,7 +94,7 @@ namespace chat_utility{
         auto send() noexcept;
         auto recv() noexcept -> int;
         auto login() noexcept;
-        auto conn_to(uint32_t) noexcept;
+        auto conn_to(COMMANDS cmd, uint32_t) noexcept;
         auto close_con() noexcept;
         int waiting_room(std::string_view, size_t) noexcept;
         auto fd() const noexcept;
@@ -132,35 +138,37 @@ namespace chat_utility{
         return connect(m_fd,reinterpret_cast<sockaddr*>(&client), sizeof(client));
     }
 
-    auto SocketConnection::conn_to(uint32_t idx) noexcept{
+    auto SocketConnection::conn_to(COMMANDS cmd, uint32_t idx) noexcept{
         if(m_fd == -1){
             m_ter.eprint("Not Connected to Server!\r\n");
             return 1;
         }
-        char payload[MAX_BYTE]  = {0};
-        char buff[MAX_BYTE]     = {0};
-        char type[10] = {0};
-        char what[MAX_BYTE - 10] = {0};
-        m_conn_to = m_list.at(idx);
-        m_conn_to = trim(m_conn_to);
-        size_t len = sprintf(payload,"%s",m_conn_to.c_str());
-        
-        write(m_fd,payload,len);
-        
-        m_ter.wprint("Waiting for permission! Please wait...");
-        read(m_fd,buff,MAX_BYTE);
-        
-        auto [cmd, res] = parse_message(buff);
-        if(cmd == COMMANDS::PERMISSION){
-            if(res == "DENIED"){
-                m_ter.eprint("Permission Denied");
-                return 1;
-            }else if(res == "ACCEPTED"){
-                m_ter.sprint("Permission Accepted");
-                return 0;
-            }else{
-                m_ter.eprint(res);
-                return 1;
+        if(cmd != COMMANDS::PERMISSION){
+            char payload[MAX_BYTE]  = {0};
+            char buff[MAX_BYTE]     = {0};
+            char type[10] = {0};
+            char what[MAX_BYTE - 10] = {0};
+            m_conn_to = m_list.at(idx);
+            m_conn_to = trim(m_conn_to);
+            size_t len = sprintf(payload,"%s",m_conn_to.c_str());
+            
+            write(m_fd,payload,len);
+            
+            m_ter.wprint("Waiting for permission! Please wait...");
+            read(m_fd,buff,MAX_BYTE);
+            
+            auto [c, res] = parse_message(buff);
+            if(c == COMMANDS::PERMISSION){
+                if(res == "DENIED"){
+                    m_ter.eprint("Permission Denied");
+                    return 1;
+                }else if(res == "ACCEPTED"){
+                    m_ter.sprint("Permission Accepted");
+                    return 0;
+                }else{
+                    m_ter.eprint(res);
+                    return 1;
+                }
             }
         }
         return 0;

@@ -31,6 +31,7 @@ int main(int argv, char** argc){
     User user;
     uint32_t user_idx;        
     SocketConnection s(t);
+    COMMANDS cmd{COMMANDS::NONE};        
     int selected        =   MAIN;
     bool is_running     =   true;
     int max_scroll      =   0;
@@ -62,12 +63,14 @@ int main(int argv, char** argc){
             }
             case USER :{
                 max_scroll = user_list.size();
-                user_idx = user_menu(t, s);
-                if(user_idx == -1){
+                auto [c, idx] = user_menu(t, s);
+                if(c != COMMANDS::PERMISSION && idx == -1){
                     selected = MAIN;
                     t.eprint("No User Found!");
                     wait(t);
                 }
+                user_idx = idx;
+                cmd = c;
                 selected = CHAT;
                 break;
             }
@@ -75,7 +78,7 @@ int main(int argv, char** argc){
                 login_menu(t,user);
                 s.set_user(user);
                 if(s.conn() == -1){
-                    t.eprint("Error: Unable to Connect To Server!\r\n");
+                    t.eprint("Unable to Connect To Server!\r\n");
                     s.close_con();
                 }
                 auto res = s.login();
@@ -88,10 +91,11 @@ int main(int argv, char** argc){
                 break;
             }
             case CHAT:{
-                if(s.conn_to(user_idx)){
+                if(s.conn_to(cmd,user_idx)){
                     wait(t);
                     s.close_con();
                 }
+                t.clearScreen();
                 disable();
                 chat_menu(t,s);
                 if(s.fd() == -1){
