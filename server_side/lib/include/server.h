@@ -1,7 +1,8 @@
 #define PORT 8096
-#define ONLINE 1
 #define OFFLINE 0
+#define ONLINE 1
 #define CHATTING 2
+#define WAITING 3
 #define MAX_CONN 10
 #define MAX_LEN 100
 #define MAX_MSG 2048
