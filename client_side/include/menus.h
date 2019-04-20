@@ -205,11 +205,11 @@ namespace chat_utility{
                     sc.close_con();
                     return {COMMANDS::NONE,-1};
                 }else if(auto it = cmd.find(COMMANDS::SVR_ERR); it != cmd.end()){
-                    t.eprint(it->second[0]);
+                    t.eprint(it->second.at(0));
                     sc.close_con();
                     return {COMMANDS::NONE,-1};
                 }else if(auto it = cmd.find(COMMANDS::SVR_WRN); it != cmd.end()){
-                    t.wprint(it->second[0]);
+                    t.wprint(it->second.at(0));
                     sc.close_con();
                     return {COMMANDS::NONE,-1};
                 }

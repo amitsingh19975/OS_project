@@ -47,7 +47,7 @@ int main(int argv, char** argc){
     // };
     auto user_list = s.get_user_list();
     padding_map(user_list);
-    // auto com = parse_commands("/svr_err Hello hi user /user admin");
+    // auto com = parse_commands("/user admin hello user /exit");
 
     // for(auto const& [key, val] : com){
     //     cout<<to_string(key)<<": ";

@@ -164,33 +164,44 @@ namespace chat_utility{
             write(m_fd,payload,len);
             
             m_ter.wprint("Waiting for permission! Please wait...");
-            read(m_fd,buff,MAX_BYTE);
-            auto cmd = parse_commands(payload);
-
-            if(cmd.find(COMMANDS::EXIT) != cmd.end()){
-                m_ter.eprint("EXIT");
-                return 1;
-            }
-            if(auto it = cmd.find(COMMANDS::PERMISSION); it != cmd.end()){
-                auto res = it->second[0];
-                if(res == "DENIED"){
-                    m_ter.eprint("Permission Denied");
-                    return 1;
-                }else if(res == "ACCEPTED"){
-                    m_ter.sprint("Permission Accepted");
-                    return 0;
-                }else{
-                    m_ter.eprint(res);
-                    return 1;
+            DEBUG("")
+            while(true){
+                if(read(m_fd,buff,MAX_BYTE) == -1){
+                    continue;
                 }
+                auto cmd = parse_commands(buff);
+                
+                if(cmd.find(COMMANDS::EXIT) != cmd.end()){
+                    m_ter.eprint("EXIT");
+                    return 1;
+                }else if(auto it = cmd.find(COMMANDS::SVR_ERR); it != cmd.end()){
+                    m_ter.eprint(it->second.at(0));
+                    return 1;
+                }else if(auto it = cmd.find(COMMANDS::SVR_WRN); it != cmd.end()){
+                    m_ter.wprint(it->second.at(0));
+                    return 0;
+                }
+
+                if(cmd.find(COMMANDS::SYNC) != cmd.end() ){
+                    set_users_str(buff);
+                    continue;
+                }
+                if(auto it = cmd.find(COMMANDS::PERMISSION); it != cmd.end()){
+                    auto res = it->second.at(0);
+                    if(res == "DENIED"){
+                        m_ter.eprint("Permission Denied");
+                        return 1;
+                    }else if(res == "ACCEPTED"){
+                        m_ter.sprint("Permission Accepted");
+                        return 0;
+                    }else{
+                        m_ter.eprint(res);
+                        return 1;
+                    }
+                }
+
             }
-            if(auto it = cmd.find(COMMANDS::SVR_ERR); it != cmd.end()){
-                m_ter.eprint(it->second[0]);
-                return 1;
-            }else if(auto it = cmd.find(COMMANDS::SVR_WRN); it != cmd.end()){
-                m_ter.wprint(it->second[0]);
-                return 0;
-            }
+            
 
         }
         return 0;
@@ -268,10 +279,10 @@ namespace chat_utility{
             }
 
             if(auto it = cmd.find(COMMANDS::SVR_ERR); it != cmd.end()){
-                m_ter.eprint(it->second[0]);
+                m_ter.eprint(it->second.at(0));
                 return 1;
             }else if(auto it = cmd.find(COMMANDS::SVR_WRN); it != cmd.end()){
-                m_ter.wprint(it->second[0]);
+                m_ter.wprint(it->second.at(0));
                 return 0;
             }
 
@@ -312,20 +323,22 @@ namespace chat_utility{
 
             if(strlen(payload) == 0) continue;
 
-            str = "/user " + m_user.get_user() + " " + std::string(payload);
             auto cmd = parse_commands(payload);
-
+            
             if(cmd.find(COMMANDS::EXIT) != cmd.end()){
                 write(m_fd, str.c_str(), MAX_BYTE);
-                str = format<Bit_3_4<FG::RED>,TF::BOLD>("Successfully left the Chat Room!\r\n");
-                write(1,str.c_str(),str.size());
+                // str = format<Bit_3_4<FG::RED>,TF::BOLD>("Successfully left the Chat Room!\r\n");
+                // write(1,str.c_str(),str.size());
                 str = "/exit";
                 write(m_fd,str.c_str(),str.size());
+                m_ter.eprint("Successfully left the Chat Room!");
                 m_connected = false;
                 return 2;
             }else if(cmd.find(COMMANDS::SYNC) != cmd.end()){
                 waiting_room(payload,10);
                 continue;
+            }else if (cmd.find(COMMANDS::NONE) != cmd.end()){
+                str = "/user " + m_user.get_user() + " " + std::string(payload);
             }
 
             write(m_fd, str.c_str(), MAX_BYTE);
@@ -339,7 +352,9 @@ namespace chat_utility{
             write(1,str.c_str(),str.size());
             return 1;
         }
+
         m_connected = true;
+        
         while(m_connected){
             std::string str;
             char payload[MAX_BYTE] = {0};
@@ -350,24 +365,21 @@ namespace chat_utility{
             
             if(strlen(payload) == 0) continue;
 
-            auto [c, user, temp] = parse_user(payload);
-
-            str = format<Bit_3_4<FG::MAGENTA>,TF::BOLD>(user) + " : " + temp + "\n";
-
             auto cmd = parse_commands(payload);
-
             if(cmd.find(COMMANDS::EXIT) != cmd.end()){
                 m_connected = false;
-                str = format<Bit_3_4<FG::RED>,TF::BOLD>("Everyone has left the Chat Room!\r\n");
-                write(1,str.c_str(),str.size());
+                m_ter.eprint("EXIT");
                 return 2;
-            }
-
-            if(cmd.find(COMMANDS::USER) != cmd.end()){
-                temp = payload;
-            }
-
-            if(cmd.find(COMMANDS::SYNC) != cmd.end()){
+            }else if(auto it = cmd.find(COMMANDS::SVR_ERR); it != cmd.end()){
+                m_ter.eprint(it->second.at(0));
+                return 3;
+            }else if(auto it = cmd.find(COMMANDS::SVR_WRN); it != cmd.end()){
+                m_ter.wprint(it->second.at(0));
+                return 4;
+            }else if(auto it = cmd.find(COMMANDS::USER); it != cmd.end()){
+                if(it->second.size() == 0) continue;
+                str = format<Bit_3_4<FG::MAGENTA>,TF::BOLD>(it->second.at(0)) + " : " + it->second.at(1) + "\n";
+            }else if(cmd.find(COMMANDS::SYNC) != cmd.end()){
                 waiting_room(payload,10);
                 continue;
             }

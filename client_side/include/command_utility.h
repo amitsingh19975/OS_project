@@ -95,9 +95,16 @@ namespace chat_utility{
     }
 
     commands parse_commands(std::string_view str){
+        if(!is_command(str)) return {{COMMANDS::NONE,{}}};
         commands cmd;
         COMMANDS com;
         std::string temp(str);
+
+        auto it = temp.rfind('\n');
+        if(it != std::string::npos){
+            temp.erase(it);
+        }
+
         std::stringstream ss(temp);
         ss>>std::noskipws;
         while(std::getline(ss,temp,' ')){
