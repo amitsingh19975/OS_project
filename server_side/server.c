@@ -32,7 +32,8 @@ void graceful_exit(void)
 }
 
 int main(int argc, char const *argv[])
-{
+{   
+    // TODO: Create an atexit function that gracefully closes the server with closing any open connectionsg
     // atexit(graceful_exit);
     // Initialize server and inits the server_fd value
     if (server_init())
@@ -87,7 +88,6 @@ int server_init()
     // Main server loop
     while (con_count <= MAX_CONN)
     {
-        // TODO: Create a case to handle more that MAX connections
         puts("Accepting connection");
         if ((in_connection = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0)
         {
@@ -159,6 +159,9 @@ void *client_process_init(void *param)
             // If it is on receiving end of permission then
             // user_to will be a /perm y or n
             // If permission is n then send
+            
+            // Waiting phase initiated
+            users[index].status = WAITING;
             char perm_cpy[100] = {0};
             strcpy(perm_cpy, user_to);
             perm_cpy[5] = 0;
@@ -217,6 +220,8 @@ void *client_process_init(void *param)
             // TODO: Check if user is online
             if (users[other_index].perm[0] == -1)
             {
+                // Waiting phase initiated
+                users[index].status = WAITING;
                 char permission[MAX_MSG] = "/perm /user ";
                 strcat(permission, users[other_index].username);
                 printf("%s sending permission message: %s to %s\n", users[index].username, permission, users[other_index].username);
@@ -415,7 +420,8 @@ int is_online(char user[])
 
 void close_connection(int index)
 {
-    online_users--;
+    if (users[index].status == ONLINE) 
+        online_users--;
     printf("User %s logged out\n", users[index].username);
     send_exit_message(users[index].connection);
     close(users[index].connection);
