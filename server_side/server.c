@@ -82,8 +82,9 @@ int server_init()
     }
     int in_connection;
     // Run the client process threads
-    pthread_t client_conns[MAX_CONN];
-    pthread_attr_t client_thread_attr[MAX_CONN];
+    pthread_t client_conns[100];
+    pthread_attr_t client_thread_attr[100];
+    int i = 0;
     // Accept incomming connections and create a thread for the connections
     // Main server loop
     while (con_count <= MAX_CONN)
@@ -95,15 +96,16 @@ int server_init()
             return 1;
         }
         // thread to initialize client
-        pthread_attr_init(&client_thread_attr[con_count]);
-        pthread_create(&client_conns[con_count], &client_thread_attr[con_count], client_process_init, (void *)&in_connection);
+        pthread_attr_init(&client_thread_attr[i]);
+        pthread_create(&client_conns[i], &client_thread_attr[i], client_process_init, (void *)&in_connection);
         con_count++;
+        i++;
         printf("Number of connections %d \n", con_count);
     }
     // Closing server
     puts("Closing server");
     printf("Con_count value: %d\n", con_count);
-    for (size_t j = 0; j < con_count; j++)
+    for (size_t j = 0; j < i; j++)
     {
         pthread_attr_destroy(&client_thread_attr[j]);
         pthread_join(client_conns[j], NULL);

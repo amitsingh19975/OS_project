@@ -18,4 +18,3 @@
 #include <arpa/inet.h>
 #include <poll.h>
 #include <signal.h>
-#define PORT 8096
