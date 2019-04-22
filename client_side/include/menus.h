@@ -151,6 +151,8 @@ namespace chat_utility{
     }
     
     auto chat_menu(terminal::Terminal& t, SocketConnection& sc){
+        auto str = format<Bit_3_4<FG::MAGENTA>,TF::BOLD,TF::UNDERLINE>("User: " +sc.get_username() + "\r\n\r\n");
+        t.wScreenCentreX(str);
         std::future<int> s = std::async(std::launch::async,&SocketConnection::send,&sc);
         std::future<int> r = std::async(std::launch::async,&SocketConnection::recv,&sc);
 

@@ -96,12 +96,13 @@ namespace chat_utility{
         auto login() noexcept;
         auto close_con() noexcept;
         auto fd() const noexcept;
-        ~SocketConnection() noexcept;
+        auto get_username() const noexcept;
         auto conn_to(COMMANDS cmd, uint32_t) noexcept;
         void set_map(std::vector<std::string> const&) noexcept;
         int waiting_room(std::string_view, size_t) noexcept;
         [[nodiscard]] constexpr auto get_user_list() const noexcept
             ->std::map<uint32_t,std::string> const&;
+        ~SocketConnection() noexcept;
         
 
     private:
@@ -118,6 +119,10 @@ namespace chat_utility{
         int                                 m_fd{-1};
         bool                                m_connected{true};
     };
+
+    auto SocketConnection::get_username() const noexcept{
+        return m_user.get_user();
+    }
 
     auto SocketConnection::fd() const noexcept{
         return m_fd;
